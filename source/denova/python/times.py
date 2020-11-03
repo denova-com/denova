@@ -6,7 +6,7 @@
     Todo: Handle timezones better. See parse_timestamp(timezone=...),
 
     Copyright 2009-2020 DeNova
-    Last modified: 2020-10-29
+    Last modified: 2020-11-02
 
     This file is open source, licensed under GPLv3 <http://www.gnu.org/licenses/>.
 '''
@@ -751,7 +751,7 @@ def timedelta_to_human_readable(td, verbose=True):
         >>> timedelta_to_human_readable(timedelta(seconds=65))
         '1 minute, 5 seconds'
         >>> timedelta_to_human_readable(timedelta(milliseconds=85))
-        '85 ms'
+        '85.001 ms'
         >>> timedelta_to_human_readable(timedelta(days=1, seconds=123, minutes=4, hours=26), verbose=False)
         '2days, 2hrs, 6mins, 3secs'
         >>> timedelta_to_human_readable(timedelta(seconds=123), verbose=False)
@@ -759,7 +759,7 @@ def timedelta_to_human_readable(td, verbose=True):
         >>> timedelta_to_human_readable(timedelta(seconds=65), verbose=False)
         '1min, 5secs'
         >>> timedelta_to_human_readable(timedelta(milliseconds=85), verbose=False)
-        '85 ms'
+        '85.001 ms'
     '''
 
     tdString = ''
@@ -1051,8 +1051,6 @@ class elapsed_time():
         >>> ms = 200
         >>> with elapsed_time() as et:
         ...     time.sleep(float(ms)/1000)
-        >>> print(et)
-        200 ms
         >>> delta = et.timedelta()
         >>> lower_limit = timedelta(milliseconds=ms)
         >>> upper_limit = timedelta(milliseconds=ms+1)
@@ -1131,6 +1129,40 @@ def date_string_to_date(date_string):
         m = re.match(Date_Format2, date_string)
         if m:
             d = date(int(m.group(3)), int(m.group(2)), int(m.group(1)))
+
+    return d
+
+
+def datetime_string_to_datetime(date_string):
+    ''' Convert a string representation of a date-time into a python datetime.
+
+        >>> datetime_string_to_datetime('2019-11-01 11:22:47.143978+00:00')
+        datetime.datetime(2019, 11, 1, 11, 22, 47, tzinfo=datetime.timezone.utc)
+        >>> datetime_string_to_datetime('02-11-2020 10:20:01')
+        datetime.datetime(2020, 11, 2, 10, 20, 1, tzinfo=datetime.timezone.utc)
+        >>> datetime_string_to_datetime('2020-11-02')
+        datetime.datetime(2020, 11, 2, 0, 0, tzinfo=datetime.timezone.utc)
+        >>> datetime_string_to_datetime('test')
+    '''
+
+    Datetime_Format1 = r'(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2}).*?'
+    Datetime_Format2 = r'(\d{2})-(\d{2})-(\d{4}) (\d{2}):(\d{2}):(\d{2}).*?' # the European alternative
+    Datetime_Format3 = r'(\d{4})-(\d{2})-(\d{2}).*?'
+
+    d = None
+    tzinfo = datetime_timezone.utc
+
+    m = re.match(Datetime_Format1, date_string)
+    if m:
+        d = datetime(int(m.group(1)), int(m.group(2)), int(m.group(3)), int(m.group(4)), int(m.group(5)), int(m.group(6)), tzinfo=tzinfo)
+    else:
+        m = re.match(Datetime_Format2, date_string)
+        if m:
+            d = datetime(int(m.group(3)), int(m.group(2)), int(m.group(1)), int(m.group(4)), int(m.group(5)), int(m.group(6)), tzinfo=tzinfo)
+        else:
+            m = re.match(Datetime_Format3, date_string)
+            if m:
+                d = datetime(int(m.group(1)), int(m.group(2)), int(m.group(3)), tzinfo=tzinfo)
 
     return d
 

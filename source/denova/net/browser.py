@@ -3,7 +3,7 @@
     Browser utilities.
 
     Copyright 2012-2020 DeNova
-    Last modified: 2020-10-20
+    Last modified: 2020-11-03
 
     This file is open source, licensed under GPLv3 <http://www.gnu.org/licenses/>.
 '''
@@ -234,6 +234,8 @@ def is_known_bot(browser, other):
             'mechanize' in browser_lc or     # mechanize
             'facebookexternal' in browser_lc or # facebookexternal
             'scoutjet' in other_lc or        # Scoutjet
+            'scrapy' in browser_lc or        # Scrapy
+            'scrapy' in other_lc or
             'yandex' in browser_lc or        # Yandex
             'yandex' in other_lc or
             'nerdybot' in browser_lc or      # NerdyBot
