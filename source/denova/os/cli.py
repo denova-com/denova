@@ -8,7 +8,7 @@
     WARNING: All inputs to the cli module must be sanitised for security.
 
     Copyright 2013-2020 DeNova
-    Last modified: 2020-10-20
+    Last modified: 2020-11-05
 
     This file is open source, licensed under GPLv3 <http://www.gnu.org/licenses/>.
 
@@ -25,8 +25,6 @@
 '''
 import os
 import re
-
-import pexpect
 
 from denova.python.log import get_log
 
@@ -95,6 +93,9 @@ class Responder():
         log.debug(f'Responder command: "{self.command_line}"')
 
     def run(self):
+
+        # import late in case its not available at the start
+        import pexpect
 
         child = pexpect.spawn(self.command_line, encoding='utf-8', echo=False, logfile=log)
 

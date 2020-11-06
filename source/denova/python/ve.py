@@ -2,7 +2,7 @@
     Virtualenv without shell scripts.
 
     Copyright 2011-2020 DeNova
-    Last modified: 2020-10-20
+    Last modified: 2020-11-05
 
     No more shell script wrappers with "cd VIRTUALENV_DIR ; bin/activate".
     Just pure python scripts using virtualenv.
@@ -179,7 +179,7 @@ def venv(dirname=None, django_app=None, restore=True):
         # activate() isn't a context manager, so it sets restore=False
         if restore:
 
-            debug('restore')
+            debug('finally restoring environment')
             if old_virtualenv:
                 os.environ['VIRTUAL_ENV'] = old_virtualenv
             else:
