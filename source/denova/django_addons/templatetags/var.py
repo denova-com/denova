@@ -1,12 +1,33 @@
 '''
     Create variables within templates
 
-    Last modified: 2020-10-22
+    Last modified: 2020-11-17
 
     Variables are set at render time. They are not available earlier,
     such as when {% block %} is evaluated.
 
-    From http://djangoclips.org/clips/829/:
+'''
+
+try:
+    from django import template
+except ModuleNotFoundError:
+    import sys
+    sys.exit('Django required')
+
+import json
+import re
+
+from denova.python.log import get_log
+
+log = get_log()
+
+register = template.Library()
+
+
+class VariablesNode(template.Node):
+
+    '''
+        From http://djangoclips.org/clips/829/:
 
         Here is a Django template tag that allows you to create complex
         variables specified in JSON format within a template.
@@ -15,25 +36,25 @@
 
         {% var as person %}
         {
-             "firstName": "John",
-             "lastName": "Smith",
-              "address": {
-                  "streetAddress": "21 2nd Street",
-                  "city": "New York",
-                  "state": "NY",
-                  "postalCode": 10021
-              },
-              "phoneNumbers": [
-                  "212 555-1234",
-                  "646 555-4567"
-              ]
-          }
-         {% endvar %}
+            "firstName": "John",
+            "lastName": "Smith",
+            "address": {
+                "streetAddress": "21 2nd Street",
+                "city": "New York",
+                "state": "NY",
+                "postalCode": 10021
+            },
+            "phoneNumbers": [
+                "212 555-1234",
+                "646 555-4567"
+            ]
+        }
+        {% endvar %}
 
-         <p>{{person.firstName}}, </br>
+        <p>{{person.firstName}}, </br>
             {{person.address.postalCode}}, </br>
             {{person.phoneNumbers.1}}
-         </p>
+        </p>
 
         This tag also enables me to do dynamic CSS using as follows:
 
@@ -67,24 +88,9 @@
             background: {{col.darkbg}};
             margin: {{dim.thinmargin}};
         }
-'''
 
-try:
-    from django import template
-except ModuleNotFoundError:
-    import sys
-    sys.exit('Django required')
+    '''
 
-import json
-import re
-
-from denova.python.log import get_log
-
-log = get_log()
-
-register = template.Library()
-
-class VariablesNode(template.Node):
     def __init__(self, nodelist, var_name):
         self.nodelist = nodelist
         self.var_name = var_name

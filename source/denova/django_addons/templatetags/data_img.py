@@ -2,7 +2,7 @@
     Convert an image file to a data uri.
 
     Copyright 2012-2020 DeNova
-    Last modified: 2020-10-10
+    Last modified: 2020-11-17
 
     This file is open source, licensed under GPLv3 <http://www.gnu.org/licenses/>.
 '''
@@ -27,7 +27,7 @@ def data_img(filename, browser=None):
 
         Example:
 
-            <img alt="embedded image" src="{{ 'images/myimage.png'|data_img:browser }}">
+            <img alt="embedded image" src="{{ 'images/myimage.png'|data_img:browser }}"/>
 
     '''
 

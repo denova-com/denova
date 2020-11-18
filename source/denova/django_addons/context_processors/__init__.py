@@ -2,7 +2,7 @@
     Context processor to set all custom template variables.
 
     Copyright 2009-2020 DeNova
-    Last modified: 2020-10-25
+    Last modified: 2020-11-11
 
     This file is open source, licensed under GPLv3 <http://www.gnu.org/licenses/>.
 '''
@@ -25,7 +25,7 @@ def custom(request):
 
     custom_context = {}
 
-    #DEBUG log('request: %r' % request)
+    #DEBUG log(f'request: {request}')
 
     #custom_context.update(is_live(request))
     custom_context.update(debug(request))

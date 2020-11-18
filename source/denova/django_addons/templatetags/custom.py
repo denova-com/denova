@@ -2,7 +2,7 @@
     Custom django template tags and filters
 
     Copyright 2010-2020 DeNova
-    Last modified: 2020-10-25
+    Last modified: 2020-11-17
 
     This file is open source, licensed under GPLv3 <http://www.gnu.org/licenses/>.
 '''
@@ -41,10 +41,12 @@ register.filter('data_img', data_img)
 register.filter('lookup', lookup)
 register.tag('var', do_variables)
 
+
 @register.simple_tag
 def get_title(title):
     # this is a special case
     title = settings.TOP_LEVEL_DOMAIN.title()
+
     return title
 
 @register.simple_tag
@@ -82,6 +84,7 @@ def transcode(url):
     stream = urllib.request.urlopen(url)
     contents = stream.read()
     stream.close()
+
     return contents
 
 
@@ -95,8 +98,10 @@ class MinWhiteSpaceNode(Node):
             remove excess white space from the entire string.'''
 
         mintext = True
+
         return strip_whitespace_in_html(self.nodelist.render(context), mintext)
 
+@register.tag
 def minwhitespace(parser, token):
     '''
         Template tag to remove excess white space.
@@ -127,6 +132,7 @@ def minwhitespace(parser, token):
     '''
     nodelist = parser.parse(('endminwhitespace',))
     parser.delete_first_token()
+
     return MinWhiteSpaceNode(nodelist)
 
 
@@ -171,16 +177,20 @@ def stripwhitespace(parser, token):
     '''
     nodelist = parser.parse(('endstripwhitespace',))
     parser.delete_first_token()
+
     return StripWhitespaceNode(nodelist)
 
+@register.filter
 def strip(value):
     ''' Strip text filter. Uses string.strip(). '''
     return mark_safe(value.strip())
 
+@register.filter
 def timedelta_in_words(value):
     ''' Timedelta to human readable template filter.'''
     return mark_safe(timedelta_to_human_readable(value))
 
+@register.simple_tag
 def blankline():
     ''' Template tag for a bootstrap css blank row.
 
@@ -195,6 +205,7 @@ def blankline():
 
     return mark_safe('<div class="container block"> &nbsp; </div>')
 
+@register.simple_tag
 def bullet():
     ''' Template tag for an inline bullet point separator.
 
@@ -217,20 +228,13 @@ def bullet():
 
         Returns:
 
-            (see html below)
+            '&bull;'
 
     '''
 
     html = '&bull;'
 
     return mark_safe(html)
-
-
-register.tag(minwhitespace)
-register.filter(timedelta_in_words)
-register.filter(strip)
-register.simple_tag(blankline)
-register.simple_tag(bullet)
 
 @register.simple_tag
 def title(*args):

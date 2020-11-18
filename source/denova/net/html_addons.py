@@ -182,6 +182,55 @@ def find_tags(elements, tags, matches=None):
         if DEBUG:
             log(f'find_tags: {msg}')
 
+    def find_matches(elements, tags, matches):
+        ''' Elements can have keys that are dicts,
+            so handle regular keys and the fancier ones. '''
+
+        for key in elements:
+
+            if isinstance(key, dict):
+                matches = find_matches(key, tags, matches)
+            else:
+                debug(f'subkey: {key}') # DEBUG
+                value = elements[key]
+
+                if key in tags:
+                    debug(f'subkey matches tag: {key}') # DEBUG
+                    if isinstance(value, list):
+                        for v in value:
+                            matches.append(v)
+                    else:
+                        matches.append(value)
+
+                else:
+                    if isinstance(value, dict):
+                        debug('recursing') # DEBUG
+                        matches = matches + find_tags(value, tags, matches)
+                        debug('back from recursion') # DEBUG
+
+                        # xmltodict.unparse(value, pretty=True)
+                        keys = []
+                        for subkey in value:
+                            keys.append(subkey)
+                        if keys:
+                            debug(f'subkeys for "{key}":\n{keys}')
+
+                    elif isinstance(value, str):
+                        debug(f'subkey value: "{value}"')
+
+                    elif isinstance(value, list):
+                        for item in value:
+                            debug('recursing') # DEBUG
+                            matches = matches + find_tags(value, tags, matches)
+                            debug('back from recursion') # DEBUG
+
+                    else:
+                        debug(f'subkey value type: {type(value)}')
+                        debug(f'subkey value: {repr(value)}')
+
+        return matches
+
+
     # if single tag, make it a sequence
     if isinstance(tags, str):
         tags = [tags]
@@ -189,50 +238,16 @@ def find_tags(elements, tags, matches=None):
     # lower case tags
     tags = [tag.lower() for tag in tags]
 
+    debug(f'search {elements}') # DEBUG
     debug(f'find tags matching {tags}') # DEBUG
 
     # if this is the top of the find_tags() recursion chain
     if matches is None:
         matches = []
+    else:
+        debug(f'matches {matches}') # DEBUG
 
-    for key in elements:
-
-        debug(f'subkey: {key}') # DEBUG
-        value = elements[key]
-
-        if key in tags:
-            debug(f'subkey matches tag: {key}') # DEBUG
-            if isinstance(value, list):
-                for v in value:
-                    matches.append(v)
-            else:
-                matches.append(value)
-
-        else:
-            if isinstance(value, dict):
-                debug('recursing') # DEBUG
-                matches = matches + find_tags(value, tags, matches)
-                debug('back from recursion') # DEBUG
-
-                # xmltodict.unparse(value, pretty=True)
-                keys = []
-                for subkey in value:
-                    keys.append(subkey)
-                if keys:
-                    debug(f'subkeys for "{key}":\n{keys}')
-
-            elif isinstance(value, str):
-                debug(f'subkey value: "{value}"')
-
-            elif isinstance(value, list):
-                for item in value:
-                    debug('recursing') # DEBUG
-                    matches = matches + find_tags(value, tags, matches)
-                    debug('back from recursion') # DEBUG
-
-            else:
-                debug(f'subkey value type: {type(value)}')
-                debug(f'subkey value: {repr(value)}')
+    matches = find_matches(elements, tags, matches)
 
     return matches
 

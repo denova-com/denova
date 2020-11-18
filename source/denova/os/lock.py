@@ -472,6 +472,7 @@ def connect_to_server(sock):
         log(msg)
         raise LockFailed(msg)
 
+
 if __name__ == "__main__":
 
     import doctest

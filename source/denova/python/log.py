@@ -4,7 +4,7 @@
     Requires the safelog package available on PyPI.
 
     Copyright 2008-2020 DeNova
-    Last modified: 2020-10-29
+    Last modified: 2020-11-08
 
     Documentation at https://denova.com/open_source/safelog/
 
@@ -28,6 +28,10 @@
     ...     log.exception_only()
 
     Developer notes
+
+    This module used to allow logs anywhere. Because the safelog server
+    runs as root, for safety logs are restricted to /var/local/log
+    subdirs.
 
     Python gets confused about circular imports.
     It's best for this module to delay imports of other modules that use
@@ -143,10 +147,20 @@ class _Log():
         >>> log = get()
         >>> log('log message')
 
-        >>> log2 = get_log('/tmp/testlog.log')
-        >>> log('log message 2')
+        Since the safelog server runs as root, don't allow logs
+        in other dirs.
 
-        Logs all messages at python's DEBUG level.
+        >>> import os.path
+        >>> path = '/tmp/testlog.log'
+        >>> log2 = get_log(path)
+        >>> log2('log message 2')
+        >>> assert not os.path.exists(path)
+
+        >>> import random
+        >>> path = '/tmp/non-extent-dir-{random.randint()}/testlog.log'
+        >>> log3 = get_log(path)
+        >>> log('log message 3')
+        >>> assert not os.path.exists(path)
     '''
 
     MAX_STACK = 1000
@@ -641,7 +655,7 @@ def get_log_path(filename=None, dirname=None):
         >>> assert os.path.dirname(path) == os.path.join(BASE_LOG_DIR, denova.python._log.whoami())
 
         >>> path = get_log_path()
-        >>> 'denova.python.log.get_log_path' in path
+        >>> 'get_log_path' in path
         True
     '''
 
