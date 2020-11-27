@@ -3,7 +3,7 @@
     File system.
 
     Copyright 2008-2020 DeNova
-    Last modified: 2020-10-20
+    Last modified: 2020-11-19
 
     This file is open source, licensed under GPLv3 <http://www.gnu.org/licenses/>.
 '''
@@ -137,7 +137,7 @@ def chown(owner, path, recursive=False):
             run(*['chown', '--recursive', owner, path])
         else:
             run(*['chown', owner, path])
-        #log.debug('chown(owner={}, path=={})'.format(owner, path))
+        #log.debug(f'chown(owner={owner}, path=={path})')
     except CalledProcessError as cpe:
         # import delayed to avoid infinite recursion
         from denova.os.user import whoami
@@ -182,7 +182,7 @@ def chgrp(group, path, recursive=False):
             run(*['chgrp', '--recursive', group, path])
         else:
             run(*['chgrp', group, path])
-        #log.debug('chgrp(group={}, path=={})'.format(group, path))
+        #log.debug(f'chgrp(group={group}, path=={path})')
     except CalledProcessError as cpe:
         # import delayed to avoid infinite recursion
         from denova.os.user import whoami
@@ -263,8 +263,7 @@ def makedir(dirname, owner=None, group=None, perms=None):
         if not os.path.exists(dirname):
 
             # makedirs(dirname, mode) uses umask, so we also call chmod() explicitly
-            #log.debug('makedir(dirname={}, owner={}, group={}, perms={})'.format(
-            #    dirname, owner, group, oct(perms))) #DEBUG
+            #log.debug(f'makedir(dirname={dirname}, owner={owner}, group={group}, perms={oct(perms)})') #DEBUG
             try:
                 os.makedirs(dirname)
             except OSError:
@@ -630,7 +629,7 @@ def copy(source, dest, symlinks=True, ignore=None, owner=None, group=None, perms
     if symlinks and os.path.islink(source):
         dest = os.path.join(dest, os.path.basename(source))
         if os.path.exists(dest):
-            # log.debug('copy() source is link but dest exists, remove dest: {}'.format(dest))
+            # log.debug(f'copy() source is link but dest exists, remove dest: {dest}')
             os.remove(dest)
         os.symlink(os.readlink(source), dest)
 
@@ -654,12 +653,12 @@ def copy(source, dest, symlinks=True, ignore=None, owner=None, group=None, perms
             unmount_all(source)
 
             if (symlinks is True and ignore is None):
-                # log.debug('copy() cp({}, {}, archive=true)'.format(source, dest))
+                # log.debug(f'copy() cp({source}, {dest}, archive=true)')
                 run(*['cp', source, dest, '--archive'])
                 set_attributes(dest, owner, group, perms, recursive=True)
 
             else:
-                # log.debug('copy(..., symlinks={}, ignore={})'.format(symlinks, ignore))
+                # log.debug(f'copy(..., symlinks={symlinks}, ignore={ignore})')
                 makedir(dest)
                 # copystat does *not* affect owner and group
                 shutil.copystat(source, dest)
@@ -670,7 +669,7 @@ def copy(source, dest, symlinks=True, ignore=None, owner=None, group=None, perms
                     ignored = []
                 else:
                     ignored = ignore(source, files)
-                    # log.debug('copy() ignored set to {}'.format(ignored))
+                    # log.debug(f'copy() ignored set to {ignored}')
 
                 for file in files:
 
@@ -734,27 +733,27 @@ def merge(source, dest, symlinks=True, force=True, ignore=None, owner=None, grou
             try:
                 if symlinks and os.path.islink(sourcename):
                     linkto = os.readlink(sourcename)
-                    # log.debug('merge() symlink({}, {})'.format(linkto, destname)) #DEBUG
+                    # log.debug(f'merge() symlink({linkto}, {destname})') #DEBUG
                     remove_dest(destname)
                     os.symlink(linkto, destname)
 
                 elif os.path.isdir(sourcename):
                     if not os.path.isdir(destname):
                         mode = getmode(sourcename)
-                        # log.debug('merge() makedirs({}, {})'.format(destname, mode)) #DEBUG
+                        # log.debug(f'merge() makedirs({destname}, {mode})') #DEBUG
                         makedir(destname, perms=mode)
                     merge(sourcename, destname,
                         symlinks=symlinks, ignore=ignore, force=force,
                         owner=owner, group=group, perms=perms)
 
                 else:
-                    # log.debug('merge() copy2({}, {})'.format(sourcename, destname)) #DEBUG
+                    # log.debug(f'merge() copy2({sourcename}, {destname})') #DEBUG
                     remove_dest(destname)
                     shutil.copy2(sourcename, destname)
                     set_attributes(destname, owner=owner, group=group, recursive=True)
 
                     mode = perms or getmode(sourcename)
-                    #log.debug('  src mode: {}'.format(oct(getmode(sourcename)))) #DEBUG
+                    #log.debug(f'  src mode: {oct(getmode(sourcename))}') #DEBUG
                     chmod(mode, destname)
                 # XXX What about devices, sockets etc.?
 
@@ -1043,7 +1042,7 @@ def edit_file_in_place(filename, replacements, regexp=False, lines=False):
         >>> HOMEPAGE = 'http://127.0.0.1/'
         >>> replacements = {
         ...     'browser.startup.homepage=.*':
-        ...         'browser.startup.homepage={}'.format(HOMEPAGE),
+        ...         f'browser.startup.homepage={HOMEPAGE}',
         ...     }
 
         >>> edit_file_in_place(f.name, replacements, regexp=True, lines=True)

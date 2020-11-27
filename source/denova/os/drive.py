@@ -3,7 +3,7 @@
     Drive lib
 
     Copyright 2018-2020 DeNova
-    Last modified: 2020-10-20
+    Last modified: 2020-11-19
 '''
 
 import sys
@@ -82,9 +82,9 @@ def physically_select_drive():
 
     def diff_drives(drives_before):
         drives_now = list_drives()
-        # debug('drives: {}'.format(drives_now)) # DEBUG
+        # debug(f'drives: {drives_now}') # DEBUG
         new_drives = set(drives_now) - set(drives_before)
-        # debug('new drives: {}'.format(new_drives)) # DEBUG
+        # debug(f'new drives: {new_drives}') # DEBUG
         return new_drives
 
     def get_new_drives():

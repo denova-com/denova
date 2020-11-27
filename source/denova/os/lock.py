@@ -4,7 +4,7 @@
     Requires the safelog package available on PyPI.
 
     Copyright 2011-2020 DeNova
-    Last modified: 2020-10-24
+    Last modified: 2020-11-25
 
     This file is open source, licensed under GPLv3 <http://www.gnu.org/licenses/>.
 '''
@@ -23,6 +23,9 @@ from denova.python.log import get_log
 from denova.python.times import now
 from denova.python.utils import caller_id, object_name
 
+
+DEBUGGING = False
+
 # constants shared with denova.python.log and denova.python.logwriter are
 # in denova.python.log so they can be imported easily by tools
 LOCK_SERVER_HOST = 'localhost'
@@ -39,9 +42,9 @@ MESSAGE_KEY = 'message'
 LOCK_ACTION = 'lock'
 UNLOCK_ACTION = 'unlock'
 
-REJECTED_LOCK_MESSAGE = 'Lockserver rejected "{}" lock request: {}'
-REJECTED_UNLOCK_MESSAGE = 'Lockserver rejected "{}" unlock request: {}'
-WHY_UNKNOWN = 'lockserver did not say why'
+REJECTED_LOCK_MESSAGE = 'Safelock rejected "{}" lock request: {}'
+REJECTED_UNLOCK_MESSAGE = 'Safelock rejected "{}" unlock request: {}'
+WHY_UNKNOWN = 'safelock did not say why'
 
 DEFAULT_TIMEOUT = timedelta.max
 
@@ -98,25 +101,27 @@ def locked(lockname=None, timeout=None):
     '''
 
     try:
-        # log('enter locked() {}'.format(lockname)) # DEBUG
 
         if not lockname:
             lockname = caller_id(ignore=[__file__, r'.*/contextlib.py'])
-        # log('lockname: {}'.format(lockname)) # DEBUG
-        warning_msg = f'lock timed out called from {lockname}'
-        log(warning_msg)
 
-        # log('call lock({})'.format(lockname)) # DEBUG
         is_locked, nonce, pid = lock(lockname, timeout)
+        if DEBUGGING:
+            if is_locked:
+                if timout is None:
+                    log(f'{lockname} locked with no timeout')
+                else:
+                    log(f'{lockname} locked with {timeout} timeout')
+            else:
+                log(f'unable to get lock for {lockname}')
 
     except Exception as exc:
         #from denova.python.utils import stacktrace
 
-        log(f'Unexpected exception: {str(exc)}')
+        log.exception()
         # don't stop if running test_until_exception
         # error_message = stacktrace().replace('Traceback', 'Stacktrace') # but without 'Traceback' # DEBUG
         # log(error_message)
-        # DEBUG log(format_exc())
         raise
 
     else:
@@ -124,8 +129,8 @@ def locked(lockname=None, timeout=None):
             yield
         finally:
             unlock(lockname, nonce, pid, timeout)
-
-    # log('exit locked() {}'.format(lockname)) # DEBUG
+            if DEBUGGING:
+                log(f'{lockname} unlocked')
 
 def lock(lockname, timeout=None):
     '''
@@ -140,7 +145,7 @@ def lock(lockname, timeout=None):
         call to lock() must use a different lockname.
         Example::
 
-            lockname = 'MyClass {}'.format(self.instance_id())
+            lockname = f'MyClass {self.instance_id()}'
             lock(lockname)
 
         You may still choose to include the source path and line number
@@ -152,7 +157,7 @@ def lock(lockname, timeout=None):
         extremely unlikely to do that accidentally.
 
         >>> pid = os.getpid()
-        >>> log('pid: {}'.format(pid))
+        >>> log(f'pid: {pid}')
 
         >>> log('test simple lock()/unlock()')
         >>> from denova.os.process import is_pid_active
@@ -207,7 +212,8 @@ def lock(lockname, timeout=None):
     pid = os.getpid()
 
     deadline = get_deadline(timeout)
-    # log('lock deadline: {}'.format(deadline)) # DEBUG
+    if DEBUGGING:
+        log(f'lock deadline: {deadline}') # DEBUG
 
     # we can probably factor this out into a general case
     loop_count = 0
@@ -217,7 +223,7 @@ def lock(lockname, timeout=None):
         try:
             # only report every 10 secs
             # if (loop_count % 100) == 0:
-                # log('call lock({})'.format(lockname)) # DEBUG
+                # log(f'call lock({lockname})') # DEBUG
 
             is_locked, nonce = try_to_lock(lockname, pid)
 
@@ -265,30 +271,35 @@ def try_to_lock(lockname, pid):
         data = {ACTION_KEY: LOCK_ACTION,
                 LOCKNAME_KEY: lockname,
                 PID_KEY: pid}
-        # log('about to send lock request: {}'.format(data))
+        # log(f'about to send lock request: {data}')
         sock.sendall(repr(data).encode())
         # log('finished sending lock request')
 
         # get response
         data = sock.recv(MAX_PACKET_SIZE)
-        # log('finished receiving lock data: {}'.format(data))
-        response = eval(data.decode())
-
-        is_locked = (response[OK_KEY] and
-                     response[ACTION_KEY] == LOCK_ACTION and
-                     response[LOCKNAME_KEY] == lockname)
-
-        if is_locked:
-            nonce = response[NONCE_KEY]
-            # log('locked: {} with {} nonce'.format(lockname, nonce)) # DEBUG
+        # log(f'finished receiving lock data: {data}')
+        try:
+            response = eval(data.decode())
+        except:
+            log(format_exc())
+            is_locked = False
         else:
-            # if the server responded with 'No'
-            if MESSAGE_KEY in response:
-                message = REJECTED_LOCK_MESSAGE.format(lockname, response[MESSAGE_KEY])
+
+            is_locked = (response[OK_KEY] and
+                         response[ACTION_KEY] == LOCK_ACTION and
+                         response[LOCKNAME_KEY] == lockname)
+
+            if is_locked:
+                nonce = response[NONCE_KEY]
+                # log(f'locked: {lockname} with {nonce} nonce') # DEBUG
             else:
-                message = REJECTED_LOCK_MESSAGE.format(lockname, WHY_UNKNOWN)
-            #log(message)
-            raise LockFailed(message)
+                # if the server responded with 'No'
+                if MESSAGE_KEY in response:
+                    message = REJECTED_LOCK_MESSAGE.format(lockname, response[MESSAGE_KEY])
+                else:
+                    message = REJECTED_LOCK_MESSAGE.format(lockname, WHY_UNKNOWN)
+                #log(message)
+                raise LockFailed(message)
 
     return is_locked, nonce
 
@@ -313,9 +324,9 @@ def unlock(lockname, nonce, pid, timeout=None):
     '''
 
     deadline = get_deadline(timeout)
-    # log('unlock deadline: {}'.format(deadline)) # DEBUG
+    # log(f'unlock deadline: {deadline}') # DEBUG
 
-    # we must be persistent in case the lockserver is busy
+    # we must be persistent in case the Safelock is busy
     is_locked = True
     last_warning = None
     while is_locked:
@@ -341,13 +352,12 @@ def unlock(lockname, nonce, pid, timeout=None):
 
         if is_locked:
             if deadline and now() > deadline:
-                warning_msg = f'unlock timed out: {lockname}'
-                log.warning(warning_msg)
+                log.warning(f'unlock timed out: {lockname}')
                 raise LockTimeout(warning_msg)
 
             sleep(0.1)
 
-    # log('unlocked: {}'.format(lockname)) # DEBUG
+    # log(f'unlocked: {lockname}') # DEBUG
 
     # only returned for testing purposes
     return not is_locked
@@ -367,27 +377,32 @@ def try_to_unlock(lockname, nonce, pid):
                 LOCKNAME_KEY: lockname,
                 NONCE_KEY: nonce,
                 PID_KEY: pid}
-        # log('about to send unlock request: {}'.format(data))
+        # log(f'about to send unlock request: {data}')
         sock.sendall(repr(data).encode())
         # log('finished sending unlock request')
 
         # get response
         data = sock.recv(MAX_PACKET_SIZE)
-        # log('finished receiving unlock data: {}'.format(data))
+        #log(f'finished receiving unlock data: {data}')
 
-        response = eval(data.decode())
-        if response[OK_KEY] and response[ACTION_KEY] == UNLOCK_ACTION and response[NONCE_KEY] == nonce:
-
+        try:
+            response = eval(data.decode())
+        except:
+            log(format_exc())
             is_locked = False
-
         else:
-            # if the server responded with 'No'
-            if MESSAGE_KEY in response:
-                message = REJECTED_UNLOCK_MESSAGE.format(lockname, response[MESSAGE_KEY])
+            if response[OK_KEY] and response[ACTION_KEY] == UNLOCK_ACTION and response[NONCE_KEY] == nonce:
+
+                is_locked = False
+
             else:
-                message = REJECTED_UNLOCK_MESSAGE.format(lockname, WHY_UNKNOWN)
-            #log(message)
-            raise LockFailed(message)
+                # if the server responded with 'No'
+                if MESSAGE_KEY in response:
+                    message = REJECTED_UNLOCK_MESSAGE.format(lockname, response[MESSAGE_KEY])
+                else:
+                    message = REJECTED_UNLOCK_MESSAGE.format(lockname, WHY_UNKNOWN)
+                #log(message)
+                raise LockFailed(message)
 
     return is_locked
 
@@ -457,17 +472,17 @@ def get_deadline(timeout=None):
     else:
         raise ValueError(f'timeout must be one of (seconds, timedelta, None), not {type(timeout)}')
 
-    # log('deadline: {}'.format(deadline))
+    # log(f'deadline: {deadline}')
     return deadline
 
 def connect_to_server(sock):
-    ''' Connect to lockserver. '''
+    ''' Connect to Safelock. '''
 
     try:
         sock.connect(BIND_ADDR)
 
     except ConnectionRefusedError:
-        msg = f'Requires DeNova lockserver. No lock server at {LOCK_SERVER_HOST}:{LOCK_SERVER_PORT}'
+        msg = f'Requires safelog package available on PyPI. No lock server at {LOCK_SERVER_HOST}:{LOCK_SERVER_PORT}'
         print(msg, file=sys.stderr)
         log(msg)
         raise LockFailed(msg)

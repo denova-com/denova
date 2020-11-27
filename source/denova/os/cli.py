@@ -8,7 +8,7 @@
     WARNING: All inputs to the cli module must be sanitised for security.
 
     Copyright 2013-2020 DeNova
-    Last modified: 2020-11-05
+    Last modified: 2020-11-19
 
     This file is open source, licensed under GPLv3 <http://www.gnu.org/licenses/>.
 
@@ -126,7 +126,7 @@ class Responder():
     def _log(self, line):
         ''' Log line. '''
 
-        log.debug('output: {}'.format(line.strip('\n')))
+        log.debug(f'output: {line.strip('\n')}')
         if self._clilog:
             self._clilog(line)
         elif self.PRINT_LOG:

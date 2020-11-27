@@ -2,7 +2,7 @@
     Context processor to set all custom template variables.
 
     Copyright 2009-2020 DeNova
-    Last modified: 2020-11-11
+    Last modified: 2020-11-19
 
     This file is open source, licensed under GPLv3 <http://www.gnu.org/licenses/>.
 '''
@@ -80,7 +80,7 @@ def css_ok(request):
     '''
 
     status = {'css_ok': not is_primitive_browser(request)}
-    #log('css_ok: {}'.format(status))
+    #log(f'css_ok: {status}')
     return status
 
 def javascript_ok(request):

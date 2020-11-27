@@ -2,7 +2,7 @@
     Net utilities.
 
     Copyright 2014-2020 DeNova
-    Last modified: 2020-10-20
+    Last modified: 2020-11-19
 
     There is some inconsistency in function naming.
 
@@ -35,7 +35,7 @@ def hostname():
 
         >>> from_hostname = hostname()
         >>> from_uname = run('uname', '--nodename').stdout.strip()
-        >>> assert from_hostname == from_uname, 'hostname(): {}, uname: {}'.format(from_hostname, from_uname)
+        >>> assert from_hostname == from_uname, f'hostname(): {from_hostname}, uname: {from_uname}'
     '''
 
     return socket.gethostname()
@@ -54,7 +54,7 @@ def hostaddress(name=None):
     ip = None
 
     host = name or hostname()
-    #log.debug('host: {}'.format(host))
+    #log.debug(f'host: {host}')
 
     try:
         host_by_name = socket.gethostbyname(host)
@@ -63,7 +63,7 @@ def hostaddress(name=None):
         log.debug(f'no address for hostname: {host}')
 
     else:
-        #log.debug('host by name: {}'.format(host_by_name))
+        #log.debug(f'host by name: {host_by_name}')
 
         if name:
             ip = host_by_name
@@ -245,7 +245,7 @@ def is_listening(host, port):
     else:
         listening = True
 
-    # log.debug('listening on {}: {}'.format(port, listening))
+    # log.debug(f'listening on {port}: {listening}')
 
     return listening
 
@@ -296,7 +296,9 @@ def set_etc_hosts_address(hostname, ip):
     require_user('root')
 
     oldlines = read_file('/etc/hosts').strip().split('\n')
-    log.debug('old /etc/hosts:\n{}'.format('\n'.join(oldlines)))
+    log.debug('old /etc/hosts:')
+    message = '\n'.join(oldlines)
+    log.debug(message)
 
     newtext = edit_text()
     assert newtext
@@ -551,7 +553,7 @@ def websocket_send(url, message, secure=True):
 
     #from denova.python.utils import randint
     #nonce = randint()
-    #log.debug("websocket_send('{}', '{}') nonce {}".format(url, message, nonce))
+    #log.debug(f"websocket_send('{url}', '{message}') nonce {nonce}")
 
     if type(url) is not str:
         raise TypeError(f'websocket url must be a string, not {type(url)}')
@@ -595,7 +597,7 @@ def websocket_send(url, message, secure=True):
         raise
 
     finally:
-        #log.debug("exit websocket_send('{}', '{}') nonce {}".format(url, message, nonce))
+        #log.debug(f"exit websocket_send('{url}', '{message}') nonce {nonce}")
         pass
 
 def _test_websocket_send(url, message, secure=True):

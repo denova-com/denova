@@ -1,7 +1,7 @@
 '''
     Create variables within templates
 
-    Last modified: 2020-11-17
+    Last modified: 2020-11-19
 
     Variables are set at render time. They are not available earlier,
     such as when {% block %} is evaluated.
@@ -100,10 +100,10 @@ class VariablesNode(template.Node):
         source = self.nodelist.render(context)
         if source.strip().startswith('{'):
             value = json.loads(source)
-            #log.debug('value from json: {}'.format(value))
+            #log.debug(f'value from json: {value}')
         else:
             value = source
-            #log.debug('value from source: {}'.format(value))
+            #log.debug(f'value from source: {value}')
         log.debug(f'value type: {type(value)}')
         context[self.var_name] = value
         return ''

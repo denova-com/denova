@@ -3,7 +3,7 @@
     html_addons is named to avoid conflict with python's html pacakge.
 
     Copyright 2013-2020 DeNova
-    Last modified: 2020-10-20
+    Last modified: 2020-11-19
 
     Requires BeautifulSoup, html5lib, and lxml for proper pretty printing of HTML.
 
@@ -28,14 +28,14 @@ def extract_text(html):
 
     except ImportError:
         # ad hoc
-        #log.debug('html: {}'.format(repr(html)))
+        #log.debug(f'html: {repr(html)}')
         text = re.sub(r'<.*?>', ' ', html.strip())
-        #log.debug('text after re: {}'.format(text))
+        #log.debug(f'text after re: {text}')
         text = text.replace('  ', ' ')
         # some html tags are still present; overlapping regex matches?
         # throw away anything after the first '<'
         text, _, _ = text.partition('<')
-        #log.debug('final text: {}'.format(text))
+        #log.debug(f'final text: {text}')
 
     else:
         # BeautifulSoup
@@ -86,13 +86,13 @@ def get_links(htmlpath, exclude=None):
 
             html = PyQuery(to_bytes(infile.read()))
             anchor_tags = html.items('a')
-            # log.debug('{} links: {}'.format(len(list(anchor_tags)), htmlpath)) # DEBUG
+            # log.debug(f'{len(list(anchor_tags))} links: {htmlpath}') # DEBUG
             for item in anchor_tags:
                 href = item.attr('href')
                 if href and href.startswith('http'):
                     if exclude and (exclude not in href):
                         results.append([htmlpath, href, item.text().strip()])
-                        # log.debug('\t{}'.format(href)) # DEBUG
+                        # log.debug(f'\t{href}') # DEBUG
 
         return results
 

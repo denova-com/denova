@@ -6,7 +6,7 @@
     at global scope. Put the import where it's used.
 
     Copyright 2008-2020 DeNova
-    Last modified: 2020-10-20
+    Last modified: 2020-11-24
 
     This file is open source, licensed under GPLv3 <http://www.gnu.org/licenses/>.
 '''
@@ -169,6 +169,7 @@ def pretty(obj, indent=4, base_indent=0):
             p = p.replace('  ', ' ')
 
     else:
+        log(f'about to pretty print object: {obj}')
         pp = pprint.PrettyPrinter(indent=indent)
         try:
             p = pp.pformat(obj)
@@ -176,7 +177,7 @@ def pretty(obj, indent=4, base_indent=0):
             try:
                 log(f'unable to pretty print object: {obj}')
                 p = repr(obj)
-                log('object len: %d' % len('{}'.format(p)))
+                log(f'object len: {len(p)}')
             except:   # 'bare except' because it catches more than "except Exception"
                 log(format_exc())
                 from denova.python.utils import last_exception_only
@@ -252,6 +253,22 @@ def replace_angle_brackets(s):
     s = s.replace('>', '&gt;')
     return s
 
+def replace_ampersand(s):
+    ''' Replace '&' with '&amp;'.
+
+        This allows html to display correctly when embedded in html.
+
+        >>> s = 'Terms & Conditions'
+        >>> replace_ampersand(s)
+        'Terms &amp; Conditions'
+        >>> s = '&lt;'
+        >>> replace_ampersand(s)
+        '&lt;'
+    '''
+
+    s = s.replace(' & ', ' &amp; ')
+    return s
+
 def camel_back(s):
     ''' Combine words into a string with no spaces and every word capitalized.
         Already capitalized letters after the first letter are preserved.
@@ -300,13 +317,13 @@ def pretty_html(html, parser=None):
         log(f'line: {line}') # DEBUG
         lines.append(line)
 
-    #log('type(html): {}'.format(type(html)))
-    #log('repr(html): {}'.format(repr(html)))
+    #log(f'type(html): {type(html)}')
+    #log(f'repr(html): {repr(html)}')
     WAS_STRING = isinstance(html, str)
-    #log('WAS_STRING: {}'.format(WAS_STRING))
+    #log(f'WAS_STRING: {WAS_STRING}')
     if WAS_STRING:
         html = to_bytes(html)
-        #log('type(html) after to_bytes: {}'.format(type(html)))
+        #log(f'type(html) after to_bytes: {type(html)}')
 
     if parser is None:
         parser = 'html5lib'
@@ -327,7 +344,7 @@ def pretty_html(html, parser=None):
         pass
 
     except:   # 'bare except' because it catches more than "except Exception"
-        log(format_exc())
+        log.exception_only()
 
     if not p_html:
         try:
@@ -344,15 +361,15 @@ def pretty_html(html, parser=None):
                     log("Warning: tidy prettyprinter can't format rss")
                 else:
                     log("Warning: tidy prettyprinter found errors")
-                    # log("see {}".format(DETAILED_LOG))
-                    # detailed_log('tidy error: {}\n'.format(errors))
+                    # log(f"see {DETAILED_LOG}")
+                    # detailed_log(f'tidy error: {errors}\n')
             elif not p_html:
                 log('tidy returned an empty page')
 
         except ImportError:
             log('No module named tidylib. Install debian package python3-tidylib or pypi package pytidylib.')
         except:   # 'bare except' because it catches more than "except Exception"
-            log(format_exc())
+            log.exception_only()
 
     if not p_html:
         try:
@@ -371,7 +388,7 @@ def pretty_html(html, parser=None):
         except ImportError:
             log('No module named tidy')
         except:   # 'bare except' because it catches more than "except Exception"
-            log(format_exc())
+            log.exception_only()
 
         else:
             if not p_html:
@@ -379,13 +396,15 @@ def pretty_html(html, parser=None):
 
     if not p_html:
         # import late to avoid conflicts
-        from denova.python.utils import stacktrace
 
+        log.warning('unable to prettyprint html')
+        p_html = html
+
+        """
         # ad hoc prettyprinter, indents tag/endtag blocks
 
         log('denova.python.format() NOT WORKING') # DEBUG
-        log(stacktrace()) # the caller needs to handle a returned value of None
-        return None
+        log.stacktrace()) # the caller needs to handle a returned value of None
 
         # split into lines
         lines = []
@@ -393,11 +412,11 @@ def pretty_html(html, parser=None):
         quote_char = None # or quote char
         for ch in html:
 
-            #log('ch: {}'.format(repr(ch))) # DEBUG
+            #log(f'ch: {repr(ch)}') # DEBUG
             # if type(html) is bytes, then type(ch) is int
             if isinstance(ch, int):
                 ch = chr(ch)
-                #log('ch changed to: {}'.format(repr(ch))) # DEBUG
+                #log(f'ch changed to: {repr(ch)}') # DEBUG
 
             if quote_char:
                 #log('in quote') # DEBUG
@@ -407,7 +426,7 @@ def pretty_html(html, parser=None):
                     quote_char = None
 
             elif ch in ('"', "'"):
-                #log('start quote: {}'.format(ch)) # DEBUG
+                #log(f'start quote: {ch}') # DEBUG
                 quote_char = ch
                 line = line + ch
 
@@ -474,15 +493,16 @@ def pretty_html(html, parser=None):
         # join lines
         lines = reversed(reversed_lines)
         p_html = b'\n'.join(lines)
+        """
 
     assert p_html, 'Unable to prettyprint. Tried BeautifulSoup, python3-tidylib, python3-utidylib, and ad hoc'
-    #log('p_html:\n{}'.format(p_html)) # DEBUG
+    #log(f'p_html:\n{f}') # DEBUG
 
-    #log('at end of p_html() WAS_STRING: {}'.format(WAS_STRING)) # DEBUG
+    #log(f'at end of p_html() WAS_STRING: {WAS_STRING}') # DEBUG
     if WAS_STRING:
         #log('at end of p_html() call to_string(html)') # DEBUG
         p_html = to_string(p_html)
-    #log('at end of p_html() type(html): {}'.formattype(html))) # DEBUG
+    #log(f'at end of p_html() type(html): {type(html)}') # DEBUG
 
     return p_html
 

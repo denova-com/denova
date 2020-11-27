@@ -3,7 +3,7 @@
     Run a command using python subprocess.
 
     Copyright 2018-2020 DeNova
-    Last modified: 2020-10-20
+    Last modified: 2020-11-26
 '''
 
 import os
@@ -38,8 +38,8 @@ def run(*command_args, **kwargs):
         combined stderrout as a string.
 
         You can also send stdout and stderr to the system stdout/stderr,
-        to files, and to file objects. Use run_verbose() if you want standard
-        stdout/stderr.
+        to files, and to file objects. Use run_verbose() if you want
+        standard stdout/stderr.
 
         To send stderr to the system's usual output::
 
@@ -61,19 +61,33 @@ def run(*command_args, **kwargs):
         Each command line arg should be a separate run() arg so
         subprocess.check_output can escape args better.
 
-        Unless output_bytes=True, the .stdout, and .stderr
-        attributes of CompletedProcess are returned as unicode strings, not
-        bytes. For example stdout is returned as stdout.decode().strip(). The
-        default is output_bytes=False. This is separate from
+        Unless output_bytes=True, the .stdout, and .stderr attributes
+        of CompletedProcess are returned as unicode strings, not
+        bytes. For example stdout is returned as stdout.decode().strip().
+        The default is output_bytes=False. This is separate from
         universal_newlines processing, and does not affect stdin.
 
         Unless glob=False, args are globbed.
 
-        Except for 'output_bytes' and 'glob', keyword args are passed to subprocess.run().
+        Except for 'output_bytes' and 'glob', keyword args are passed
+        to subprocess.run().
 
         On error raises subprocess.CalledProcessError.
         The error has an extra data member called 'output' which is a
         string containing stderr and stdout.
+
+        To see the program's output when there is an error:
+
+            try:
+                run(...)
+
+            except subprocess.CalledProcessError as cpe:
+                print(cpe)
+                print(f'error output: {cpe.stderrout}')
+
+        'stderrout' combines both stderr and stdout. You can also choose
+        just 'stderr' or 'stdout'.
+        
     '''
 
     """ Because we are using PIPEs, we need to use Popen() instead of
@@ -173,21 +187,18 @@ def run(*command_args, **kwargs):
                                 **kwargs)
 
     except subprocess.CalledProcessError as cpe:
-        log(f'failed command. returncode: {cpe.returncode} / {command_str}')
+        log(f'command failed. "{command_str}", returncode: {cpe.returncode}')
 
-        # add .stderrout data member
         cpe.stderrout = None
         if cpe.stderr and cpe.stdout:
-            log('have cpe.stderr and cpe.stdout') # DEBUG
             cpe.stderrout = (cpe.stderr.decode().strip() +
-                          '/n' +
-                          cpe.stdout.decode().strip())
+                             '/n' +
+                             cpe.stdout.decode().strip())
         elif cpe.stderr:
-            log('have just cpe.stderr') # DEBUG
             cpe.stderrout = cpe.stderr.decode().strip()
         elif cpe.stdout:
-            log('have just cpe.stdout') # DEBUG
             cpe.stderrout = cpe.stdout.decode().strip()
+            
         if cpe.stderrout:
             log(cpe.stderrout)
 
@@ -293,6 +304,31 @@ def background(*command_args, **kwargs):
         log.debug(f"background process started: \"{' '.join(process.args)}\", pid: {process.pid}")
         return process
 
+def nice(*command_args, **kwargs):
+    ''' Run a command line at low priority, for both cpu and io.
+
+        This can greatly increases responsiveness of the user interface.
+    
+        nice() effective prefixes the command with::
+
+            nice nice ionice -c 3 ...
+
+        In Debian 10 "buster" ionice must be applied on the command line
+        immediately before the executable task. This means our 'nicer'
+        and 'ionicer' bash scripts don't work. nice() does.
+
+        Because ionice must be used immediately before the executable
+        task, commands like this won't work as expected::
+
+            nice(['bash', 'tar', 'cvf', 'test.tar', '/tmp'])
+
+        In this case only 'bash' will get the effect of ionice, not 'tar'.
+    '''
+
+    nice_args = ('nice', 'nice', 'ionice', '-c', '3') + tuple(command_args)
+    
+    return run(*nice_args, **kwargs)
+    
 def wait(program):
     ''' Wait for a background command to finish.'''
 

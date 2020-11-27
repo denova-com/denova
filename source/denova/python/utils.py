@@ -335,7 +335,7 @@ def caller_module_name(ignore=None, this_module_valid=False):
                 modules = []
                 dirname, _, basename = filename.rpartition('/')
                 while dirname and is_python_module_dir(dirname):
-                    #if _debug_caller_module_name: print('caller_module_name is_python_module_dir: {}'.format(dirname)) #DEBUG
+                    #if _debug_caller_module_name: print(f'caller_module_name is_python_module_dir: {dirname}') #DEBUG
                     modules.append(os.path.basename(dirname))
                     dirname, _, _ = dirname.rpartition('/')
                 modules.reverse()
@@ -343,7 +343,7 @@ def caller_module_name(ignore=None, this_module_valid=False):
                 # if the filename is a __main__.py for a package, just use the package name
                 if basename != '__main__.py':
                     modules.append(strip_py(basename))
-                #if _debug_caller_module_name: print('caller_module_name modules: {}'.format(repr(modules))) #DEBUG
+                #if _debug_caller_module_name: print(f'caller_module_name modules: {repr(modules))}' #DEBUG
 
                 name = '.'.join(modules)
 

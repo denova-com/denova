@@ -3,7 +3,7 @@
     Browser utilities.
 
     Copyright 2012-2020 DeNova
-    Last modified: 2020-11-03
+    Last modified: 2020-11-19
 
     This file is open source, licensed under GPLv3 <http://www.gnu.org/licenses/>.
 '''
@@ -164,7 +164,7 @@ def is_primitive_browser(request):
         # presumably a modern browser written in a language will not identify as that language
         'python' in b or
         'java' in b)
-    # log('is_primitive_browser: {}'.format(dumb))
+    # log(f'is_primitive_browser: {dumb}')
     return dumb
 
 

@@ -4,14 +4,14 @@
     Requires the safelog package available on PyPI.
 
     Copyright 2008-2020 DeNova
-    Last modified: 2020-11-08
+    Last modified: 2020-11-24
 
     Documentation at https://denova.com/open_source/safelog/
 
     This file is open source, licensed under GPLv3 <http://www.gnu.org/licenses/>.
 
-    >>> import denova.python.log
-    >>> log = denova.python.log.get()
+    >>> from denova.python.log import get_log
+    >>> log = get_log()
 
     >>> log('logs are easy')
 
@@ -26,6 +26,9 @@
     ...     raise Exception('log exception only')
     ... except:  # 'bare except' because it catches more than "except Exception"
     ...     log.exception_only()
+
+    >>> # log stacktrace()
+    >>> log.stacktrace()
 
     Developer notes
 
@@ -445,6 +448,8 @@ class _Log():
         # if we are in an 'except' clause
         if exc_type:
             try:
+                # sometimes traceback.format_exception() returns a
+                # ridiculously short traceback
                 lines = format_exception(exc_type, exc_value, exc_traceback)
                 msg = ''.join(lines)
                 self.debug(msg)
@@ -602,17 +607,20 @@ def get(filename=None, dirname=None, group=None, recreate=False, verbose=False):
         >>> import os.path
         >>> import denova.python.log
 
-        >>> log = denova.python.log.get('testlog3.log')
+        >>> logname = 'testlog1.log'
+        >>> log = denova.python.log.get(logname)
         >>> log('log message')
-        >>> user_log_dir = os.path.join(BASE_LOG_DIR, denova.python._log.whoami())
-        >>> assert os.path.dirname(log.pathname) == user_log_dir
+        >>> log_path = os.path.join(BASE_LOG_DIR,
+        ...                denova.python._log.whoami(),
+        ...                logname)
+        >>> assert log.pathname == log_path, f'{log.pathname} != {log_path}'
 
-        >>> log = get('testlog1.log', dirname='/tmp/logs')
+        >>> log = get('testlog2.log', dirname='/tmp/logs')
         >>> log('log message')
         >>> print(log.dirname)
         /tmp/logs
 
-        >>> log = denova.python.log.get('/tmp/testlog2.log')
+        >>> log = denova.python.log.get('/tmp/testlog3.log')
         >>> log('log message')
         >>> print(log.dirname)
         /tmp
@@ -797,14 +805,14 @@ def _test():
         >>> log.filename
         '_test.log'
 
-        >>> unique_message = 'test message to {} at {}'.format(log.filename, denova.python._log.timestamp())
+        >>> unique_message = f'test message to {log.filename} at {denova.python._log.timestamp()}'
         >>> log(unique_message)
 
         # give logwriter time to write
         >>> import time
         >>> time.sleep(1)
 
-        >>> logdir = '/var/local/log/{}'.format(denova.python._log.whoami())
+        >>> logdir = f'/var/local/log/{denova.python._log.whoami()}'
         >>> for basename in ['_test.log', 'master.log']:
         ...     logpath = os.path.join(logdir, basename)
         ...     with open(logpath) as logfile:

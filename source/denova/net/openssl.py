@@ -7,7 +7,7 @@
     Do we need to include a "distinguished_name" or group or req name in the conf file?
 
     Copyright 2014-2020 DeNova
-    Last modified: 2020-10-20
+    Last modified: 2020-11-19
 '''
 
 import os
@@ -445,7 +445,7 @@ def get_ca_certs_dir():
         result_stdout = result.stdout
         m = re.match('OPENSSLDIR: "(.*?)"', result_stdout)
         if m:
-            ca_certs_dir = '{}/certs'.format(m.group(1))
+            ca_certs_dir = f'{m.group(1)}/certs'
     except:   # 'bare except' because it catches more than "except Exception"
         log(format_exc())
     """

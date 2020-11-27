@@ -6,7 +6,7 @@
     Todo: Handle timezones better. See parse_timestamp(timezone=...),
 
     Copyright 2009-2020 DeNova
-    Last modified: 2020-11-02
+    Last modified: 2020-11-22
 
     This file is open source, licensed under GPLv3 <http://www.gnu.org/licenses/>.
 '''
@@ -146,7 +146,7 @@ def timestamp(when=None, microseconds=True):
         if i > 0:
             formatted_time = formatted_time[:i]
 
-    #log('formatted_time: {}'.format(formatted_time))
+    #log(f'formatted_time: {formatted_time}')
 
     return formatted_time
 
@@ -167,7 +167,11 @@ def parse_timestamp(timestr, startswith=False, default_year=None, timezone=None)
 
         'timezone' is a timezone string.
         Examples are 'UTC', 'EST' and 'Europe/Amsterdam'.
-        To keep django happy, parse_timestamp() defaults to UTC.
+        (wrong) To keep django happy, parse_timestamp() defaults to UTC.
+        No, it doesn't.Ifyouget an error like:
+            TypeError: can't compare offset-naive and offset-aware datetimes
+        Then set timezone='UTC' or other appropriate timezone.
+
         OUTDATED:
         It is used only if the timestr is "naive", meaning has no timezone.
         If timestr does not have a timezone and 'timezone' is specified,
@@ -322,21 +326,21 @@ def parse_timestamp(timestr, startswith=False, default_year=None, timezone=None)
             Returns tzinfo or None.
         '''
 
-        #log.debug('timezone_str: {}'.format(timezone_str))
+        #log.debug(f'timezone_str: {timezone_str}')
         tzinfo = None
 
         if PYTZ_AVAILABLE:
             try:
                 tzinfo = pytz.timezone(timezone_str)
             except UnknownTimeZoneError:
-                #log.debug('timezone unknown to pytz: {}'.format(timezone_str))
+                #log.debug(f'timezone unknown to pytz: {timezone_str}')
                 pass
 
         if not tzinfo:
             match = TIMEZONE_RE.search(timezone_str)
             if match:
                 mdict = match.groupdict()
-                #log.debug('timezone dict: {}'.format(mdict))
+                #log.debug(f'timezone dict: {mdict}')
 
                 # name must be UTC; if it's not and pytz wasn't able to
                 # handle the conversion, then we'll ignore the timezone
@@ -385,7 +389,7 @@ def parse_timestamp(timestr, startswith=False, default_year=None, timezone=None)
                              'hour', 'minute', 'second', 'microsecond',
                              'tzinfo']
 
-        #log.debug('mdict {}'.format(mdict)) # DEBUG
+        #log.debug(f'mdict {mdict}') # DEBUG
 
         kwargs = {}
         for key in mdict:
@@ -420,7 +424,7 @@ def parse_timestamp(timestr, startswith=False, default_year=None, timezone=None)
             # process runs into a new year.
             kwargs['year'] = default_year or now().year
 
-        #log.debug('get tzinfo. timezone={}'.format(timezone)) # DEBUG
+        #log.debug(f'get tzinfo. timezone={timezone}') # DEBUG
         ''' We want to set tzinfo from the timestr if possible.
             Second choice is the timezone= passed to parse_timestamp().
             Last choice is default to a "naive" datetime, with no tzinfo.
@@ -431,10 +435,10 @@ def parse_timestamp(timestr, startswith=False, default_year=None, timezone=None)
         if 'timezone' in kwargs:
             tz = kwargs['timezone']
             del kwargs['timezone']
-            #log.debug('kwargs[timezone]: {}'.format(tz)) # DEBUG
+            #log.debug(f'kwargs[timezone]: {tz}') # DEBUG
             if tz:
                 timezone = tz
-                #log.debug('set timezone from kwargs: {}'.format(timezone)) # DEBUG
+                #log.debug(f'set timezone from kwargs: {timezone}') # DEBUG
 
         if timezone:
             if timezone.upper() in ['UTC','GMT', 'Z']:
@@ -444,7 +448,7 @@ def parse_timestamp(timestr, startswith=False, default_year=None, timezone=None)
 
         if tzinfo:
             kwargs['tzinfo'] = tzinfo
-            #log.debug('tzinfo: {}'.format(tzinfo))
+            #log.debug(f'tzinfo: {tzinfo}')
         #else:
             #log.warning('no tzinfo') # DEBUG
 
@@ -456,43 +460,47 @@ def parse_timestamp(timestr, startswith=False, default_year=None, timezone=None)
 
         return timestamp
 
-    RAW_TIMESTAMP_RES = [# iso datetime, which is datetime default
-         ISO_DATETIME_RE,
+    RAW_TIMESTAMP_RES = [
+        # iso datetime, which is datetime default
+        ISO_DATETIME_RE,
 
-         # short iso datetime with timezone
-         r'(?P<year>\d+)-(?P<month>\d+)-(?P<day>\d+)[ T](?P<hour>\d+):(?P<minute>\d+):(?P<second>\d+)(?P<timezone>.*)',
+        # short iso datetime with timezone
+        r'(?P<year>\d+)-(?P<month>\d+)-(?P<day>\d+)[ T](?P<hour>\d+):(?P<minute>\d+):(?P<second>\d+)(?P<timezone>.*)',
 
-         # short iso datetime
-         r'(?P<year>\d+)-(?P<month>\d+)-(?P<day>\d+)[ T](?P<hour>\d+):(?P<minute>\d+):(?P<second>\d+)',
+        # short iso datetime
+        r'(?P<year>\d+)-(?P<month>\d+)-(?P<day>\d+)[ T](?P<hour>\d+):(?P<minute>\d+):(?P<second>\d+)',
 
-         # nginx error log
-         # Example: 2019/10/17 12:40:36
-         r'(?P<year>\d+)/(?P<month>\d+)/(?P<day>\d+) (?P<hour>\d+):(?P<minute>\d+):(?P<second>\d+)',
+        # nginx error log
+        # Example: 2019/10/17 12:40:36
+        r'(?P<year>\d+)/(?P<month>\d+)/(?P<day>\d+) (?P<hour>\d+):(?P<minute>\d+):(?P<second>\d+)',
 
-         # RFC 850, obsoleted by RFC 1036, Example: Sunday, 06-Nov-94 08:49:37 GMT
-         r'(?P<weekday>[A-Za-z]+),\s+(?P<day>\d+)-(?P<month>[A-Za-z]+)-(?P<year>\d+)\s+(?P<hour>\d+):(?P<minute>\d\d):(?P<second>\d\d)\s+(?P<timezone>.*)',
+        # RFC 850, obsoleted by RFC 1036, Example: Sunday, 06-Nov-94 08:49:37 GMT
+        r'(?P<weekday>[A-Za-z]+),\s+(?P<day>\d+)-(?P<month>[A-Za-z]+)-(?P<year>\d+)\s+(?P<hour>\d+):(?P<minute>\d\d):(?P<second>\d\d)\s+(?P<timezone>.*)',
 
-         # Example: Mon, 27 Apr 2020 15:55:56 GMT
-         r'(?P<weekday>[A-Za-z]+),\s(?P<day>\d+)\s+(?P<month>[A-Za-z]+)\s+(?P<year>\d+)\s+(?P<hour>\d+):(?P<minute>\d\d):(?P<second>\d\d)\s+(?P<timezone>.*)',
+        # Example: Mon, 27 Apr 2020 15:55:56 GMT
+        r'(?P<weekday>[A-Za-z]+),\s(?P<day>\d+)\s+(?P<month>[A-Za-z]+)\s+(?P<year>\d+)\s+(?P<hour>\d+):(?P<minute>\d\d):(?P<second>\d\d)\s+(?P<timezone>.*)',
 
-         # Example: Tue Jan 15 14:49:13 2019
-         r'(?P<weekday>[A-Za-z]+)\s+(?P<month>[A-Za-z]+)\s+(?P<day>\d+)\s+(?P<hour>\d+):(?P<minute>\d\d):(?P<second>\d\d)\s+(?P<year>\d+)',
+        # Example: Tue Jan 15 14:49:13 2019
+        r'(?P<weekday>[A-Za-z]+)\s+(?P<month>[A-Za-z]+)\s+(?P<day>\d+)\s+(?P<hour>\d+):(?P<minute>\d\d):(?P<second>\d\d)\s+(?P<year>\d+)',
 
-         # tor log
-         # Example: Oct 28 11:06:55.000
-         r'(?P<month>[A-Za-z]+)\s+(?P<day>\d\d)[ T](?P<hour>\d+):(?P<minute>\d\d):(?P<second>\d\d)\.(?P<microsecond>\d\d\d)',
+        # tor log
+        # Example: Oct 28 11:06:55.000
+        r'(?P<month>[A-Za-z]+)\s+(?P<day>\d\d)[ T](?P<hour>\d+):(?P<minute>\d\d):(?P<second>\d\d)\.(?P<microsecond>\d\d\d)',
 
-         # syslog
-         # Example: Oct 28 11:06:55
-         # same as tor log, but without microseconds
-         r'(?P<month>[A-Za-z]+)\s+(?P<day>\d+)[ T](?P<hour>\d+):(?P<minute>\d\d):(?P<second>\d\d)',
+        # syslog
+        # Example: Oct 28 11:06:55
+        # same as tor log, but without microseconds
+        r'(?P<month>[A-Za-z]+)\s+(?P<day>\d+)[ T](?P<hour>\d+):(?P<minute>\d\d):(?P<second>\d\d)',
 
-         # Example: '02:07:36 05/08/03 EDT'
-         # Different parts of the world interpret this differently so we're going to ignore it
-         #r'(?P<hour>\d+):(?P<minute>\d\d):(?P<second>\d\d) (?P<year>\d\d)/(?P<month>\d+)/(?P<day>\d+) (?P<timezone>.*)',
+        # Example: '02:07:36 05/08/03 EDT'
+        # Different parts of the world interpret this differently so we're going to ignore it
+        #r'(?P<hour>\d+):(?P<minute>\d\d):(?P<second>\d\d) (?P<year>\d\d)/(?P<month>\d+)/(?P<day>\d+) (?P<timezone>.*)',
+
+        # date only
+        r'(?P<year>\d+)-(?P<month>\d+)-(?P<day>\d+)',
         ]
 
-    #log.debug('timestr: {}'.format(repr(timestr))) # DEBUG
+    #log.debug(f'timestr: {repr(timestr)}') # DEBUG
 
     if not _compiled_timestamps:
         # anchor timestamp formats to start of line and compile them
@@ -520,11 +528,11 @@ def parse_timestamp(timestr, startswith=False, default_year=None, timezone=None)
             if not timestamp:
                 try:
                     # sometimes we get "must be str or a bytes-like object"
-                    #log.debug('type(timestamp_re): {}'.format(type(timestamp_re))) # DEBUG
-                    #log.debug('type(timestr): {}'.format(type(timestr))) # DEBUG
+                    #log.debug(f'type(timestamp_re): {type(timestamp_re)}') # DEBUG
+                    #log.debug(f'type(timestr): {type(timestr)}') # DEBUG
                     match = timestamp_re.search(timestr)
                     if match:
-                        #log.debug('timestamp_re matched: {}'.format(timestamp_re)) # DEBUG
+                        #log.debug(f'timestamp_re matched: {timestamp_re}') # DEBUG
                         timestamp = get_timestamp(match.groupdict(), timezone)
 
                 except Exception as e:
@@ -1091,10 +1099,12 @@ class log_elapsed_time():
     '''
 
     def __init__(self, log, msg=None):
-        self.start = now()
+
         # verify 'log' is a log
         if not hasattr(log, 'debug'):
             raise ValueError(f"'log' must be a log, not {type(log)}")
+
+        self.start = now()
         self.log = log
         self.msg = msg
 

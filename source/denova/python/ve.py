@@ -2,7 +2,7 @@
     Virtualenv without shell scripts.
 
     Copyright 2011-2020 DeNova
-    Last modified: 2020-11-05
+    Last modified: 2020-11-24
 
     No more shell script wrappers with "cd VIRTUALENV_DIR ; bin/activate".
     Just pure python scripts using virtualenv.
@@ -71,8 +71,8 @@ import traceback
 from contextlib import contextmanager
 from glob import glob
 
-DEBUGGING = True
-LOGGING = True
+DEBUGGING = False
+LOGGING = False
 
 # site_packages_subdir_glob is relative to the virtualenv dir
 site_packages_subdir_glob = 'lib/python*/site-packages'
@@ -132,7 +132,7 @@ def venv(dirname=None, django_app=None, restore=True):
     # venv is called from denova/wsgi_django.py every time
     # gunicorn restarts (starts?) a worker # DEBUG
     # from denova.python.utils import stacktrace # DEBUG
-    # debug('called venv() from:\n{}'.format(stacktrace())) # DEBUG
+    # debug(f'called venv() from:\n{stacktrace()}') # DEBUG
 
     old_virtualenv = os.environ.get('VIRTUAL_ENV')
     old_settings_module = os.environ.get('DJANGO_SETTINGS_MODULE')
@@ -299,7 +299,10 @@ def virtualenv_dir(dirname=None):
         # find the calling program module
         # we want the last caller which is not this module
         stack = traceback.extract_stack()
-        debug('stack: {}'.format('\n'+'\n'.join(repr(element) for element in stack)))
+        debug('stack:')
+        for element in stack:
+            message = '\n'.join(repr(element))
+            debug(message)
         debug(f'__file__: {__file__}')
 
         # stack filenames end in .py; __file__ filenames end in .pyc or .pyo
@@ -319,7 +322,7 @@ def virtualenv_dir(dirname=None):
                 if filename == this_filename:
                     found_callers = True
                 else:
-                    #debug('caller filename: {}'.format(filename))
+                    #debug(f'caller filename: {filename}')
                     caller_filenames.append(filename)
 
         # do we want to start the search at the earliest or most recent caller?
@@ -328,14 +331,14 @@ def virtualenv_dir(dirname=None):
         debug('reverse caller filenames')
         caller_filenames = reversed(caller_filenames)
         for caller_filename in caller_filenames:
-            #debug('(reversed) caller filename: {}'.format(caller_filename))
+            #debug(f'(reversed) caller filename: {caller_filename}')
             if not vdir:
                 """ what's this about?
                 # in PATH, follow links
                 # we probably don't want to always follow links
                 path = os.environ['PATH'].split(':')
                 dirname = os.path.dirname(caller_filename)
-                debug('os.path.islink({}): {}'.format(caller_filename, os.path.islink(caller_filename)))
+                debug(f'os.path.islink({caller_filename}): {os.path.islink(caller_filename)}')
                 while os.path.islink(caller_filename) and dirname in path:
                     caller_filename = os.readlink(caller_filename)
                 """
@@ -358,7 +361,7 @@ def check_dir_for_virtualenv(dirname):
     done = False
     while not done:
 
-        #debug('check_dir_for_virtualenv() dirname: {}'.format(dirname))
+        #debug(f'check_dir_for_virtualenv() dirname: {dirname}')
         if not dirname:
             debug('done because no dirname')
             done = True
@@ -373,7 +376,7 @@ def check_dir_for_virtualenv(dirname):
             done = True
 
         else:
-            #debug('check_dir_for_virtualenv() checking subdirs of : {}'.format(dirname))
+            #debug(f'check_dir_for_virtualenv() checking subdirs of : {dirname}')
             for d in os.listdir(dirname):
                 if not done:
                     path = os.path.join(dirname, d)

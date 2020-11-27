@@ -6,7 +6,7 @@
     thoroughly vetted.
 
     Copyright 2013-2020 DeNova
-    Last modified: 2020-10-20
+    Last modified: 2020-11-19
 
     This file is open source, licensed under GPLv3 <http://www.gnu.org/licenses/>.
 '''
@@ -401,8 +401,7 @@ def wait(event, timeout=None, sleep_time=1, event_args=None, event_kwargs=None):
                 log.debug(f'wait() timed out with exception: {format_exc()}')
                 raise
             else:
-                log.debug('wait() ignored exception because not timed out:\n{}'.format(
-                    format_exc()))
+                log.debug(f'wait() ignored exception because not timed out:\n{format_exc()}')
 
         else:
             success = True

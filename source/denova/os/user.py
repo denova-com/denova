@@ -2,7 +2,7 @@
     User utilities.
 
     Copyright 2010-2020 DeNova
-    Last modified: 2020-10-20
+    Last modified: 2020-11-19
 
     This file is open source, licensed under GPLv3 <http://www.gnu.org/licenses/>.
 '''
@@ -112,7 +112,7 @@ def sudo(username=None, set_home_dir=True):
         ...         if user != original_user:
         ...
         ...             with denova.os.user.sudo(user):
-        ...                 assert denova.os.user.whoami() == user, 'could not sudo as {}'.format(user)
+        ...                 assert denova.os.user.whoami() == user, f'could not sudo as {user}'
         ...             assert denova.os.user.whoami() == original_user
     '''
 
@@ -205,7 +205,7 @@ def force(user):
         #this_program = sys.argv[0]
         # we need something like this, but this doesn't work
         # with sudo(user):
-        #     assert is_executable(this_program), '{} must be executable as {}'.format(this_program, user)
+        #     assert is_executable(this_program), f'{this_program} must be executable as {user}'
 
         for f in [sys.stdout, sys.stderr]:
             f.flush()
