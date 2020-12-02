@@ -3,7 +3,7 @@
     html_addons is named to avoid conflict with python's html pacakge.
 
     Copyright 2013-2020 DeNova
-    Last modified: 2020-11-19
+    Last modified: 2020-12-01
 
     Requires BeautifulSoup, html5lib, and lxml for proper pretty printing of HTML.
 
@@ -21,6 +21,14 @@ def extract_text(html):
     ''' Extract plain text from html.
 
         Prefers BeautifulSoup 4, but falls back to ad hoc extraction.
+
+        >>> from denova.net.utils import get_page
+        >>> page = get_page('http://denova.com')
+        >>> page is not None
+        True
+        >>> text = extract_text(page)
+        >>> text != page
+        True
     '''
 
     try:

@@ -1,10 +1,13 @@
 '''
-    Multiprocess-safe locks.
+    Client side for Multiprocess-safe locks.
 
-    Requires the safelog package available on PyPI.
+    Requirements:
+      * The safelock package available on PyPI. It also installs safelog.
+      * Running safelock and safelog servers. The servers can be started
+        by hand or with the included systemd service file.
 
     Copyright 2011-2020 DeNova
-    Last modified: 2020-11-25
+    Last modified: 2020-12-01
 
     This file is open source, licensed under GPLv3 <http://www.gnu.org/licenses/>.
 '''
@@ -28,9 +31,9 @@ DEBUGGING = False
 
 # constants shared with denova.python.log and denova.python.logwriter are
 # in denova.python.log so they can be imported easily by tools
-LOCK_SERVER_HOST = 'localhost'
-LOCK_SERVER_PORT = 8674
-BIND_ADDR = (LOCK_SERVER_HOST, LOCK_SERVER_PORT)
+SAFELOCK_HOST = 'localhost'
+SAFELOCK_PORT = 8674
+BIND_ADDR = (SAFELOCK_HOST, SAFELOCK_PORT)
 MAX_PACKET_SIZE = 1024
 
 ACTION_KEY = 'action'
@@ -42,8 +45,8 @@ MESSAGE_KEY = 'message'
 LOCK_ACTION = 'lock'
 UNLOCK_ACTION = 'unlock'
 
-REJECTED_LOCK_MESSAGE = 'Safelock rejected "{}" lock request: {}'
-REJECTED_UNLOCK_MESSAGE = 'Safelock rejected "{}" unlock request: {}'
+REJECTED_LOCK_MESSAGE = 'safelock rejected "{}" lock request: {}'
+REJECTED_UNLOCK_MESSAGE = 'safelock rejected "{}" unlock request: {}'
 WHY_UNKNOWN = 'safelock did not say why'
 
 DEFAULT_TIMEOUT = timedelta.max
@@ -60,7 +63,7 @@ class LockFailed(Exception):
     pass
 
 @contextmanager
-def locked(lockname=None, timeout=None):
+def locked(lockname=None, timeout=None, server_required=True):
     ''' Get a simple reusable lock as a context manager.
 
         'name' same as lock(). Default is a name created from the
@@ -72,6 +75,11 @@ def locked(lockname=None, timeout=None):
         locked() logs the failure and raises LockTimeout.
         If your locked code block can take longer, you must set
         'timeout' to the longest expected time.
+
+        'server_required' specifies whether the lock server is
+        required. If your code must work even when the lock server
+        is down, set server_required=False. This should only be
+        used for critical code.
 
         With locked() you don't have to initialize each lock in an
         an outer scope, as you do with raw multiprocessing.Lock().
@@ -100,12 +108,14 @@ def locked(lockname=None, timeout=None):
         unlikely to do that accidentally.
     '''
 
+    is_locked = False
+
     try:
 
         if not lockname:
             lockname = caller_id(ignore=[__file__, r'.*/contextlib.py'])
 
-        is_locked, nonce, pid = lock(lockname, timeout)
+        is_locked, nonce, pid = lock(lockname, timeout, server_required=server_required)
         if DEBUGGING:
             if is_locked:
                 if timout is None:
@@ -128,11 +138,12 @@ def locked(lockname=None, timeout=None):
         try:
             yield
         finally:
-            unlock(lockname, nonce, pid, timeout)
-            if DEBUGGING:
-                log(f'{lockname} unlocked')
+            if is_locked:
+                unlock(lockname, nonce, pid, timeout, server_required=server_required)
+                if DEBUGGING:
+                    log(f'{lockname} unlocked')
 
-def lock(lockname, timeout=None):
+def lock(lockname, timeout=None, server_required=True):
     '''
         Lock a process or thread to prevent concurrency issues.
 
@@ -225,7 +236,7 @@ def lock(lockname, timeout=None):
             # if (loop_count % 100) == 0:
                 # log(f'call lock({lockname})') # DEBUG
 
-            is_locked, nonce = try_to_lock(lockname, pid)
+            is_locked, nonce = try_to_lock(lockname, pid, server_required=server_required)
 
         except TimeoutError as te:
             log(str(te))
@@ -256,7 +267,7 @@ def lock(lockname, timeout=None):
 
     return is_locked, nonce, pid
 
-def try_to_lock(lockname, pid):
+def try_to_lock(lockname, pid, server_required=True):
     ''' Try once to lock. '''
 
     is_locked = False
@@ -265,45 +276,52 @@ def try_to_lock(lockname, pid):
     # Create a socket (SOCK_STREAM means a TCP socket)
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
 
-        connect_to_server(sock)
+        connected = connect_to_server(sock, server_required=server_required)
 
-        # send request
-        data = {ACTION_KEY: LOCK_ACTION,
-                LOCKNAME_KEY: lockname,
-                PID_KEY: pid}
-        # log(f'about to send lock request: {data}')
-        sock.sendall(repr(data).encode())
-        # log('finished sending lock request')
+        if connected:
+            # send request
+            data = {ACTION_KEY: LOCK_ACTION,
+                    LOCKNAME_KEY: lockname,
+                    PID_KEY: pid}
+            # log(f'about to send lock request: {data}')
+            try:
+                sock.sendall(repr(data).encode())
+                # log('finished sending lock request')
 
-        # get response
-        data = sock.recv(MAX_PACKET_SIZE)
-        # log(f'finished receiving lock data: {data}')
-        try:
-            response = eval(data.decode())
-        except:
-            log(format_exc())
-            is_locked = False
-        else:
+            except BrokenPipeError as bpe:
+                log.warning(bpe)
+                raise LockFailed('probably safelock server down')
 
-            is_locked = (response[OK_KEY] and
-                         response[ACTION_KEY] == LOCK_ACTION and
-                         response[LOCKNAME_KEY] == lockname)
-
-            if is_locked:
-                nonce = response[NONCE_KEY]
-                # log(f'locked: {lockname} with {nonce} nonce') # DEBUG
             else:
-                # if the server responded with 'No'
-                if MESSAGE_KEY in response:
-                    message = REJECTED_LOCK_MESSAGE.format(lockname, response[MESSAGE_KEY])
+                # get response
+                data = sock.recv(MAX_PACKET_SIZE)
+                # log(f'finished receiving lock data: {data}')
+                try:
+                    response = eval(data.decode())
+                except:
+                    log(format_exc())
+                    is_locked = False
                 else:
-                    message = REJECTED_LOCK_MESSAGE.format(lockname, WHY_UNKNOWN)
-                #log(message)
-                raise LockFailed(message)
+
+                    is_locked = (response[OK_KEY] and
+                                 response[ACTION_KEY] == LOCK_ACTION and
+                                 response[LOCKNAME_KEY] == lockname)
+
+                    if is_locked:
+                        nonce = response[NONCE_KEY]
+                        # log(f'locked: {lockname} with {nonce} nonce') # DEBUG
+                    else:
+                        # if the server responded with 'No'
+                        if MESSAGE_KEY in response:
+                            message = REJECTED_LOCK_MESSAGE.format(lockname, response[MESSAGE_KEY])
+                        else:
+                            message = REJECTED_LOCK_MESSAGE.format(lockname, WHY_UNKNOWN)
+                        #log(message)
+                        raise LockFailed(message)
 
     return is_locked, nonce
 
-def unlock(lockname, nonce, pid, timeout=None):
+def unlock(lockname, nonce, pid, timeout=None, server_required=True):
     '''
         >>> log('Unlock a process or thread that was previously locked.')
         >>> lockname = 'lock1'
@@ -331,7 +349,10 @@ def unlock(lockname, nonce, pid, timeout=None):
     last_warning = None
     while is_locked:
         try:
-            is_locked = try_to_unlock(lockname, nonce, pid)
+            is_locked = try_to_unlock(lockname,
+                                      nonce,
+                                      pid,
+                                      server_required=server_required)
 
         except TimeoutError as te:
             log(str(te))
@@ -362,7 +383,7 @@ def unlock(lockname, nonce, pid, timeout=None):
     # only returned for testing purposes
     return not is_locked
 
-def try_to_unlock(lockname, nonce, pid):
+def try_to_unlock(lockname, nonce, pid, server_required=True):
     ''' Try once to unlock. '''
 
     is_locked = True
@@ -370,39 +391,48 @@ def try_to_unlock(lockname, nonce, pid):
     # Create a socket (SOCK_STREAM means a TCP socket)
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
 
-        connect_to_server(sock)
+        connected = connect_to_server(sock, server_required=server_required)
 
-        # send request
-        data = {ACTION_KEY: UNLOCK_ACTION,
-                LOCKNAME_KEY: lockname,
-                NONCE_KEY: nonce,
-                PID_KEY: pid}
-        # log(f'about to send unlock request: {data}')
-        sock.sendall(repr(data).encode())
-        # log('finished sending unlock request')
+        if connected:
+            # send request
+            data = {ACTION_KEY: UNLOCK_ACTION,
+                    LOCKNAME_KEY: lockname,
+                    NONCE_KEY: nonce,
+                    PID_KEY: pid}
+            # log(f'about to send unlock request: {data}')
 
-        # get response
-        data = sock.recv(MAX_PACKET_SIZE)
-        #log(f'finished receiving unlock data: {data}')
+            try:
+                sock.sendall(repr(data).encode())
+                # log('finished sending unlock request')
 
-        try:
-            response = eval(data.decode())
-        except:
-            log(format_exc())
-            is_locked = False
-        else:
-            if response[OK_KEY] and response[ACTION_KEY] == UNLOCK_ACTION and response[NONCE_KEY] == nonce:
-
-                is_locked = False
+            except BrokenPipeError as bpe:
+                log.warning(bpe)
+                raise LockFailed('probably safelock server down')
 
             else:
-                # if the server responded with 'No'
-                if MESSAGE_KEY in response:
-                    message = REJECTED_UNLOCK_MESSAGE.format(lockname, response[MESSAGE_KEY])
+
+                # get response
+                data = sock.recv(MAX_PACKET_SIZE)
+                #log(f'finished receiving unlock data: {data}')
+
+                try:
+                    response = eval(data.decode())
+                except:
+                    log(format_exc())
+                    is_locked = False
                 else:
-                    message = REJECTED_UNLOCK_MESSAGE.format(lockname, WHY_UNKNOWN)
-                #log(message)
-                raise LockFailed(message)
+                    if response[OK_KEY] and response[ACTION_KEY] == UNLOCK_ACTION and response[NONCE_KEY] == nonce:
+
+                        is_locked = False
+
+                    else:
+                        # if the server responded with 'No'
+                        if MESSAGE_KEY in response:
+                            message = REJECTED_UNLOCK_MESSAGE.format(lockname, response[MESSAGE_KEY])
+                        else:
+                            message = REJECTED_UNLOCK_MESSAGE.format(lockname, WHY_UNKNOWN)
+                        #log(message)
+                        raise LockFailed(message)
 
     return is_locked
 
@@ -475,17 +505,27 @@ def get_deadline(timeout=None):
     # log(f'deadline: {deadline}')
     return deadline
 
-def connect_to_server(sock):
+def connect_to_server(sock, server_required=True):
     ''' Connect to Safelock. '''
+
+    connected = False
 
     try:
         sock.connect(BIND_ADDR)
 
     except ConnectionRefusedError:
-        msg = f'Requires safelog package available on PyPI. No lock server at {LOCK_SERVER_HOST}:{LOCK_SERVER_PORT}'
-        print(msg, file=sys.stderr)
-        log(msg)
-        raise LockFailed(msg)
+        if server_required:
+            msg = f'Requires safelock package available on PyPI. No lock server at {SAFELOCK_HOST}:{SAFELOCK_PORT}'
+            log.error(msg)
+            raise LockFailed(msg)
+
+        else:
+            log.warning(f'No lock server at {SAFELOCK_HOST}:{SAFELOCK_PORT}, but server_required={server_required}')
+
+    else:
+        connected = True
+
+    return connected
 
 
 if __name__ == "__main__":

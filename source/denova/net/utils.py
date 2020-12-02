@@ -2,7 +2,7 @@
     Net utilities.
 
     Copyright 2014-2020 DeNova
-    Last modified: 2020-11-19
+    Last modified: 2020-12-01
 
     There is some inconsistency in function naming.
 
@@ -475,7 +475,6 @@ def get_page(full_url, proxy_dict=None):
         proxy_dict: (optional) formatted as {TYPE_OF_PROXY, PROXY_ADDRESS}
                     for example: proxy_dict={'https': 'http://127.0.0.1:8398'}
 
-        >>> from denova.net.html_addons import extract_text
         >>> page = get_page('http://denova.com')
         >>> page is not None
         True

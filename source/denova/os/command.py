@@ -3,7 +3,7 @@
     Run a command using python subprocess.
 
     Copyright 2018-2020 DeNova
-    Last modified: 2020-11-26
+    Last modified: 2020-11-30
 '''
 
 import os
@@ -87,7 +87,7 @@ def run(*command_args, **kwargs):
 
         'stderrout' combines both stderr and stdout. You can also choose
         just 'stderr' or 'stdout'.
-        
+
     '''
 
     """ Because we are using PIPEs, we need to use Popen() instead of
@@ -198,7 +198,7 @@ def run(*command_args, **kwargs):
             cpe.stderrout = cpe.stderr.decode().strip()
         elif cpe.stdout:
             cpe.stderrout = cpe.stdout.decode().strip()
-            
+
         if cpe.stderrout:
             log(cpe.stderrout)
 
@@ -308,7 +308,7 @@ def nice(*command_args, **kwargs):
     ''' Run a command line at low priority, for both cpu and io.
 
         This can greatly increases responsiveness of the user interface.
-    
+
         nice() effective prefixes the command with::
 
             nice nice ionice -c 3 ...
@@ -326,9 +326,9 @@ def nice(*command_args, **kwargs):
     '''
 
     nice_args = ('nice', 'nice', 'ionice', '-c', '3') + tuple(command_args)
-    
+
     return run(*nice_args, **kwargs)
-    
+
 def wait(program):
     ''' Wait for a background command to finish.'''
 

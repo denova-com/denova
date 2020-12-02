@@ -1,10 +1,14 @@
 #! /usr/bin/python3
 '''
     Python logs for humans.
-    Requires the safelog package available on PyPI.
+
+    Requirements:
+      * The safelog package available on PyPI.
+      * Running safelog server. The server can be started
+        by hand or with the included systemd service file.
 
     Copyright 2008-2020 DeNova
-    Last modified: 2020-11-24
+    Last modified: 2020-11-30
 
     Documentation at https://denova.com/open_source/safelog/
 
@@ -350,6 +354,13 @@ class _Log():
         self._check_user()
         basename = os.path.basename(self.pathname)
 
+        """ DELETE if unused 2020.12.15
+        if self.user == 'root' and basename == 'denova.reinhardt.feeds.source.log': # DEBUG
+            with open('/tmp/zos', 'a') as zos: # DEBUG
+                zos.write(f"{self.timestamp()} self.user == 'root' and basename == 'denova.reinhardt.feeds.source.log'" + '\n') # DEBUG
+                zos.write(''.join(format_stack())) # DEBUG
+        """
+
         # Create a socket (SOCK_STREAM means a TCP socket)
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             # Connect to logserver and send data
@@ -506,7 +517,7 @@ class _Log():
         except Exception:
             self.exception()
 
-    def stacktrace(self):
+    def stacktrace(self, msg=None):
         ''' Log full current stacktrace.
 
             Contrary to the python docs, python often limits the number of
@@ -542,8 +553,12 @@ class _Log():
                 msg = ''.join(lines).strip()
         '''
 
-        lines = ['Stacktrace:\n'] + format_stack()[:-1]
-        self.debug(''.join(lines))
+        prefix = 'Call stack:\n'
+        if msg:
+            prefix = f'{msg}: {prefix}:'
+        lines = [prefix] + format_stack()[:-1]
+        stack = '\t'.join(lines)
+        self.debug(stack)
 
     def is_master(self):
         ''' Return whether this log is a master log. '''
