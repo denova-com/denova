@@ -2,7 +2,7 @@
     Shared django settings for between projects.
 
     Copyright 2009-2020 DeNova
-    Last modified: 2020-10-20
+    Last modified: 2020-12-03
 
     This file is open source, licensed under GPLv3 <http://www.gnu.org/licenses/>.
 '''
@@ -72,10 +72,6 @@ X_FRAME_OPTIONS = 'DENY'
 INSTALLED_APPS = (
     'django.contrib.humanize',
     'django.contrib.staticfiles',
-
-    # django third party
-    #'debug_toolbar',
-    'django_singleton_admin',
 
     # https://pypi.python.org/pypi/django-bootstrap4
     'bootstrap4',

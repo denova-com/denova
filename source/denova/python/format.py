@@ -6,7 +6,7 @@
     at global scope. Put the import where it's used.
 
     Copyright 2008-2020 DeNova
-    Last modified: 2020-11-24
+    Last modified: 2020-12-03
 
     This file is open source, licensed under GPLv3 <http://www.gnu.org/licenses/>.
 '''
@@ -621,6 +621,21 @@ def read_unicode(stream, errors=None):
         raise UnicodeDecodeError(f'unable to decode unicode using {repr(UNICODE_DECODINGS)}')
 
     return decoded
+
+def less_whitespace(s):
+    ''' Remove repeated blank lines, and white space at the end of lines.
+
+        >>> s = 'a    \nb\n\n\n\nc'
+        >>> print(less_whitespace(s)
+        a
+        b
+        c
+    '''
+
+    s = re.sub(r'[ \t]+\n', '\n', s, flags=re.MULTILINE)
+    s = re.sub(r'\n+', '\n', s, flags=re.MULTILINE)
+
+    return s
 
 def to_bytes(obj):
     ''' Convert string to bytes.
