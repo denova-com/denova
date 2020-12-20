@@ -2,7 +2,7 @@
     Custom django template tags and filters
 
     Copyright 2010-2020 DeNova
-    Last modified: 2020-11-17
+    Last modified: 2020-12-13
 
     This file is open source, licensed under GPLv3 <http://www.gnu.org/licenses/>.
 '''
@@ -250,9 +250,9 @@ def title(*args):
 
     if args:
         text = args[0]
-        html = django.utils.html.format_html('<h3> <strong> {} </strong> </h3>', text)
+        html = django.utils.html.format_html('<h1> <strong> {} </strong> </h1>', text)
     else:
-        html = django.utils.html.format_html('<h3> <strong> ')
+        html = django.utils.html.format_html('<h1> <strong> ')
     return html
 
 @register.simple_tag
@@ -266,7 +266,7 @@ def endtitle():
             {% endtitle %}
     '''
 
-    return django.utils.html.format_html('</strong> </h3>')
+    return django.utils.html.format_html('</strong> </h1>')
 
 @register.simple_tag
 def subtitle(*args):

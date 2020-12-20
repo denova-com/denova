@@ -10,7 +10,7 @@
     Copyright 2008-2020 DeNova
     Last modified: 2020-11-30
 
-    Documentation at https://denova.com/open_source/safelog/
+    Documentation at https://denova.com/open/safelog/
 
     This file is open source, licensed under GPLv3 <http://www.gnu.org/licenses/>.
 

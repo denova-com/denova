@@ -405,6 +405,28 @@ def strip_cdata(s):
                   r'\1',
                   s,
                   flags=re.IGNORECASE)
+                  
+def is_xml(s):
+    ''' Return True if xml, else False.
+
+        >>> is_xml('text')
+        False
+        
+        >>> is_xml('<a>')
+        True
+        
+        >>> is_xml('<p>')
+        True
+        
+        >>> is_xml('<a> <p>')
+        True
+    '''
+
+    PATTERN = r'< \s* \w+ .*? >'
+    match = re.search(PATTERN, s,
+                      flags=(re.IGNORECASE | re.VERBOSE))
+
+    return match != None
 
 
 if __name__ == "__main__":

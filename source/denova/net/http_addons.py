@@ -3,7 +3,7 @@
     http_addons is named to avoid conflict with python's http pacakge.
 
     Copyright 2013-2020 DeNova
-    Last modified: 2020-10-20
+    Last modified: 2020-12-14
 
     HTTP is a byte oriented protocol.
     In general, this module expects and return bytes.
@@ -22,6 +22,7 @@ import ssl
 from http import HTTPStatus
 from http.client import HTTPConnection, HTTPSConnection
 from http.client import responses as client_responses
+import requests
 from traceback import format_exc
 from urllib.parse import urlsplit, urlunsplit
 
@@ -443,6 +444,23 @@ def is_gzipped(params):
     return (
         'Content-Encoding' in params and
         'gzip' in params['Content-Encoding'])
+
+def content_length(url):
+    ''' Return content length of url.
+
+        >>> # test including redir from http: to https:
+        >>> length = content_length('http://denova.com')
+        >>> assert length > 0
+    '''
+
+    head = requests.head(url)
+    
+    # handle redirs
+    while head.status_code >= 300 and head.status_code < 400:
+        url = head.headers['Location']
+        head = requests.head(url)
+        
+    return int(head.headers['Content-Length'])
 
 def verify_cert_locally(host, port):
     ''' Verify the site's certificate using openssl locally. '''

@@ -2,7 +2,7 @@
     Views
 
     Copyright 2019-2020 DeNova
-    Last modified: 2020-10-24
+    Last modified: 2020-12-15
 
     This file is open source, licensed under GPLv3 <http://www.gnu.org/licenses/>.
 '''
@@ -68,7 +68,7 @@ def catch_all(request, url, context={}):
         return template
 
     url = url.rstrip('/')
-    log(f'unable to find {url} so making one last effort')
+    log(f'catch_all: unable to find {url} so making one last effort')
 
     template = search_template_dirs(url)
     if template is None:
