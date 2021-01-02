@@ -3,19 +3,83 @@
     html_addons is named to avoid conflict with python's html pacakge.
 
     Copyright 2013-2020 DeNova
-    Last modified: 2020-12-01
+    Last modified: 2020-12-26
 
     Requires BeautifulSoup, html5lib, and lxml for proper pretty printing of HTML.
 
     This file is open source, licensed under GPLv3 <http://www.gnu.org/licenses/>.
 '''
 
+from html.parser import HTMLParser
 import re
 
 from denova.python.format import to_bytes, to_string
 from denova.python.log import get_log
 
 log = get_log()
+
+class LinkParser(HTMLParser):
+    ''' Generic link parser.
+
+        After parsing, self.links is a list::
+            [(label, url), ...]
+
+        >>> html = '<a href=/first> One </a> <a href=/second> Two </a>'
+
+        >>> parser = LinkParser()
+        >>> parser.parse(html)
+
+        >>> print(parser.links)
+        [('One', '/first'), ('Two', '/second')]
+
+        >>> # as dict, with dup link text removed
+        >>> print(dict(parser.links))
+        {'One': '/first', 'Two': '/second'}
+    '''
+
+    def __init__(self, *args, **kwargs):
+        self.links = []
+
+        self.tag = None
+        self.url = None
+        self.title = None
+        self.data = None
+
+        super().__init__(*args, **kwargs)
+
+    def parse(self, html):
+        if isinstance(html, bytes):
+            html = to_string(html)
+
+        self.feed(html)
+
+    def handle_starttag(self, tag, attrs):
+        self.tag = tag
+        if tag == 'a':
+            attrs = dict(attrs)
+            self.url = attrs.get('href')
+            if 'aria-label' in attrs:
+                self.title = attrs['aria-label']
+
+    def handle_endtag(self, tag):
+        if tag == 'a':
+            if not self.title:
+                if self.data:
+                    self.title = self.data
+                else:
+                    self.title = 'no title'
+
+            if self.title and self.url:
+                self.links.append((self.title, self.url))
+
+            self.url = None
+            self.title = None
+            self.data = None
+
+    def handle_data(self, data):
+        data = data.strip()
+        if data:
+            self.data = data
 
 def extract_text(html):
     ''' Extract plain text from html.
@@ -405,19 +469,19 @@ def strip_cdata(s):
                   r'\1',
                   s,
                   flags=re.IGNORECASE)
-                  
+
 def is_xml(s):
     ''' Return True if xml, else False.
 
         >>> is_xml('text')
         False
-        
+
         >>> is_xml('<a>')
         True
-        
+
         >>> is_xml('<p>')
         True
-        
+
         >>> is_xml('<a> <p>')
         True
     '''

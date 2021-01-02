@@ -3,7 +3,7 @@
     Run a command using python subprocess.
 
     Copyright 2018-2020 DeNova
-    Last modified: 2020-11-30
+    Last modified: 2020-12-31
 '''
 
 import os
@@ -12,6 +12,7 @@ import subprocess
 import sys
 from glob import glob
 
+# log init delayed to avoid circular imports
 log = None
 
 def run(*command_args, **kwargs):
@@ -24,39 +25,14 @@ def run(*command_args, **kwargs):
 
         Example::
 
-            >>> result = run('echo word1 word2')
-            >>> result.stdout.strip()
-            'word1 word2'
-
-        Or if you prefer less chance of parsing errors::
             >>> result = run('echo', 'word1', 'word2')
-            >>> result.stdout.strip()
+            >>> result.stdout
             'word1 word2'
 
         By default run() captures stdout and stderr. It returns a
         subprocess.CompletedProcess with stdout and stderr, plus a
-        combined stderrout as a string.
-
-        You can also send stdout and stderr to the system stdout/stderr,
-        to files, and to file objects. Use run_verbose() if you want
-        standard stdout/stderr.
-
-        To send stderr to the system's usual output::
-
-            # this isn't a doctest because in a doctest sys.stdout is a
-            # doctest._SpoofOut object.
-
-            import sys
-            ...
-            run('echo', 'stdout', 'text', stdout=sys.stdout)
-
-        To send stderr to a file::
-
-            >>> with open('/tmp/syr.command.stderr', 'w') as stderr:
-            ...     result = run('ls', '/tmp', stderr=stderr)
-
-        If you redir stdout or stderr to a file, the .stdout and .stderr
-        values in the result returned from run() are None.
+        combined stderrout as a string. Use run_verbose() if you
+        want stdout and stderr to be redirected to sys.stdout and sys.stderr.
 
         Each command line arg should be a separate run() arg so
         subprocess.check_output can escape args better.
@@ -76,7 +52,7 @@ def run(*command_args, **kwargs):
         The error has an extra data member called 'output' which is a
         string containing stderr and stdout.
 
-        To see the program's output when there is an error:
+        To see the program's output when there is an error::
 
             try:
                 run(...)
@@ -88,58 +64,49 @@ def run(*command_args, **kwargs):
         'stderrout' combines both stderr and stdout. You can also choose
         just 'stderr' or 'stdout'.
 
-    '''
-
-    """ Because we are using PIPEs, we need to use Popen() instead of
+        Because we are using PIPEs, we need to use Popen() instead of
         run(), and call Popen.communicate() to avoid zombie processes.
         But to get run()'s timeout, input and check params, we don't.
         Zombie processes are worrisome, but do no real harm.
 
         See https://stackoverflow.com/questions/2760652/how-to-kill-or-avoid-zombie-processes-with-subprocess-module
-    """
 
-    def format_output(result):
-        if (result.stdout is not None) and (not isinstance(result.stdout, str)):
-            result.stdout = result.stdout.decode()
-            result.stdout = result.stdout.strip()
-        if (result.stderr is not None) and (not isinstance(result.stderr, str)):
-            result.stderr = result.stderr.decode()
-            result.stderr = result.stderr.strip()
-        return result
+        run() does not process special shell characters. It treats
+        them as plain strings.
+
+        >>> from tempfile import gettempdir
+        >>> tmpdir = gettempdir()
+        >>> command_args = ['ls', '-l', f'{tmpdir}/denova*']
+        >>> kwargs = {}
+        >>> result = run(*command_args, **kwargs)
+        >>> result.returncode
+        0
+        >>> len(result.args) > 3
+        True
+
+        >>> from tempfile import gettempdir
+        >>> tmpdir = gettempdir()
+        >>> command_args = ['ls', '-l', f'{tmpdir}/denova*']
+        >>> kwargs = {'glob': False, 'shell': True}
+        >>> result = run(*command_args, **kwargs)
+        >>> result.args
+        ['ls', '-l', '/tmp/denova*']
+        >>> result.returncode
+        0
+
+        >>> command_args = ['echo', '"denova*"']
+        >>> result = run(*command_args)
+        >>> result.args
+        ['echo', '"denova*"']
+        >>> result.returncode
+        0
+    '''
 
     _init_log()
     result = None
 
-    # if there is a single string arg with a space, it's a command line string
-    if len(command_args) == 1 and isinstance(command_args[0], str) and ' ' in command_args[0]:
-        # run() is better able to add quotes correctly when each arg is separate
-        command_args = shlex.split(command_args[0])
-
-        recommended_args = []
-        for arg in command_args:
-            recommended_args.append(f"'{arg}'")
-        log.warning(f"run({', '.join(recommended_args)}) is recommended to avoid command line parsing errors")
-
-        # apparently subprocess.run(..., shell=True) calls shlex.split()
-        # kwargs['shell'] = True
-
     try:
-        command_str = ' '.join(map(str, command_args))
-
-        if 'glob' in kwargs:
-            globbing = kwargs['glob']
-            del kwargs['glob']
-        else:
-            globbing = True
-
-        # subprocess.run() wants strings
-        args = []
-        for arg in command_args:
-            arg = str(arg)
-            if globbing and ('*' in arg or '?' in arg):
-                args.extend(glob(arg))
-            else:
-                args.append(arg)
+        args, kwargs = get_run_args(*command_args, **kwargs)
 
         if 'output_bytes' in kwargs:
             output_bytes = kwargs['output_bytes']
@@ -152,56 +119,14 @@ def run(*command_args, **kwargs):
             if output not in kwargs:
                 kwargs[output] = subprocess.PIPE
 
-        """
-        # how to print program's stderr
-        # this also handles unicode encoded bytestreams better
-
-        class CompletedProcessStub:
-            pass
-
-        proc = subprocess.Popen(proc_args,
-                                **kwargs)
-
-        # stderr to the console's stdout
-        proc_stderr = ''
-        err_data = proc.stderr.readline()
-        while err_data:
-            line = err_data.decode()
-            proc_stderr = proc_stderr + line
-            # lines already have a newline
-            print(line, end='')
-            err_data = proc.stderr.readline()
-
-        # get any stdout from the proc
-        proc_stdout, _ = proc.communicate()
-
-        result = CompletedProcessStub()
-        result.resultcode = proc.wait()
-        result.stdout = proc_stdout
-        result.stderr = proc_stderr
-
-        # much simpler code if we don't need realtime feedback
-        """
+        log(f'args: {args}')
+        log(f'kwargs: {kwargs}')
         result = subprocess.run(args,
                                 check=True,
                                 **kwargs)
 
     except subprocess.CalledProcessError as cpe:
-        log(f'command failed. "{command_str}", returncode: {cpe.returncode}')
-
-        cpe.stderrout = None
-        if cpe.stderr and cpe.stdout:
-            cpe.stderrout = (cpe.stderr.decode().strip() +
-                             '/n' +
-                             cpe.stdout.decode().strip())
-        elif cpe.stderr:
-            cpe.stderrout = cpe.stderr.decode().strip()
-        elif cpe.stdout:
-            cpe.stderrout = cpe.stdout.decode().strip()
-
-        if cpe.stderrout:
-            log(cpe.stderrout)
-
+        handle_run_error(command_args, cpe)
         raise
 
     except Exception as e:
@@ -218,9 +143,30 @@ def run(*command_args, **kwargs):
 def run_verbose(*args, **kwargs):
     ''' Run program with stdout and stderr directed to
         sys.stdout and sys.stderr.
+
+        Doctests can't have stdout redirected so we disable interactive in
+        the following test. Under normal circumstances you don't want to set
+        interactive to False. If you do not want the command to run interactive,
+        just use the run() function.
+
+        >>> from tempfile import gettempdir
+        >>> tmpdir = gettempdir()
+        >>> kwargs = {'interactive': False}
+        >>> command_args = ['ls', '-l', f'{tmpdir}']
+        >>> result = run_verbose(*command_args, **kwargs)
+        >>> result.args
+        ['ls', '-l', '/tmp']
+        >>> result.returncode
+        0
     '''
 
-    result = run(*args, stdout=sys.stdout, stderr=sys.stderr, **kwargs)
+    if kwargs is None:
+        kwargs = {}
+
+    if 'interactive' not in kwargs:
+        kwargs['interactive'] = True
+
+    result = run(*args, **kwargs)
 
     return result
 
@@ -238,22 +184,33 @@ def background(*command_args, **kwargs):
         Returns a subprocess.Popen object, or raises
         subprocess.CalledProcessError.
 
-        If you redirect stdout/stderr, be sure to catch exceution errors:
+        If you redirect stdout/stderr, be sure to catch execution errors:
 
-            >>> try:
-            ...     program = background('python', '-c', 'not python code',
-            ...                          stdout=sys.stdout,
-            ...                          stderr=sys.stderr)
-            ...     wait(program)
-            ... except Exception as exc:
-            ...     print(exc)
-            argument of type 'NoneType' is not iterable
+            This example is not a doctest because doctests spoof sys.stdout.
+            try:
+                command_args = ['python', '-c', 'not python code']
+                kwargs = {'stdout': sys.stdout, 'stderr': sys.stderr}
+                program = background(*command_args, **kwargs)
+                wait(program)
+            except Exception as exc:
+                print(exc)
 
         The caller can simply ignore the return value, poll() for when
         the command finishes, wait() for the command, or communicate()
         with it.
 
         Do not use Popen.wait(). Use denova.os.command.wait().
+
+        >>> program = background('sleep', '0.5')
+
+        >>> print('before')
+        before
+
+        >>> wait(program)
+
+        >>> print('after')
+        after
+
     '''
 
     if not command_args:
@@ -269,28 +226,33 @@ def background(*command_args, **kwargs):
     command_str = ' '.join(command_args)
     kwargs_str = ''
     for key in kwargs:
-        kwargs_str = kwargs_str + f', {key}={kwargs[key]}'
+        if kwargs_str:
+            kwargs_str = kwargs_str + ', '
+        kwargs_str = kwargs_str + f'{key}={kwargs[key]}'
 
     try:
         process = subprocess.Popen(command_args, **kwargs)
 
     except OSError as ose:
         log.debug(f'command: {command_str}')
-        log.debug(f'OSError as ose: {ose} ({dir(ose)})')
-        log.debug(ose)
+        log.exception()
 
-        if 'Exec format error' in ose.strerror:
-            # if the program file starts with '#!' retry with 'shell=True'.
-            program_file = command_args[0]
-            with open(program_file) as program:
-                first_chars = program.read(2)
-                if str(first_chars) == '#!':
+        if ose.strerror:
+            if 'Exec format error' in ose.strerror:
+                # if the program file starts with '#!' retry with 'shell=True'.
+                program_file = command_args[0]
+                with open(program_file) as program:
+                    first_chars = program.read(2)
+                    if str(first_chars) == '#!':
 
-                    return subprocess.Popen(command_args, shell=True, **kwargs)
+                        process = subprocess.Popen(command_args, shell=True, **kwargs)
 
-                else:
-                    log.debug(f'no #! in {program_file}')
-                    raise
+                    else:
+                        log.debug(f'no #! in {program_file}')
+                        raise
+
+            else:
+                raise
 
         else:
             raise
@@ -303,6 +265,108 @@ def background(*command_args, **kwargs):
     else:
         log.debug(f"background process started: \"{' '.join(process.args)}\", pid: {process.pid}")
         return process
+
+def get_run_args(*command_args, **kwargs):
+    '''
+        Get the args in list with each item a string.
+
+        >>> _init_log()
+
+        >>> from tempfile import gettempdir
+        >>> command_args = ['ls', '-l', gettempdir()]
+        >>> kwargs = {}
+        >>> get_run_args(*command_args, **kwargs)
+        (['ls', '-l', '/tmp'], {})
+
+        >>> # test command line with glob=False
+        >>> tmpdir = gettempdir()
+        >>> command_args = ['ls', '-l', f'{gettempdir()}/denova*']
+        >>> kwargs = {'glob': False}
+        >>> get_run_args(*command_args, **kwargs)
+        (['ls', '-l', '/tmp/denova*'], {})
+    '''
+
+    if kwargs is None:
+        kwargs = {}
+
+    if 'interactive' in kwargs:
+        if kwargs['interactive']:
+            del kwargs['interactive']
+            kwargs.update(dict(stdin=sys.stdin,
+                               stdout=sys.stdout,
+                               stderr=sys.stderr))
+        else:
+            del kwargs['interactive']
+
+    if 'glob' in kwargs:
+        globbing = kwargs['glob']
+        del kwargs['glob']
+    else:
+        globbing = True
+
+    # subprocess.run() wants strings
+    args = []
+    for arg in command_args:
+        arg = str(arg)
+
+        # see if the arg contains an inner string so we don't mistake that inner string
+        # containing any wildcard chars. e.g., arg = '"this is an * example"'
+        encased_str = ((arg.startswith('"') and arg.endswith('"')) or
+                       (arg.startswith("'") and arg.endswith("'")))
+
+        if ('*' in arg or '?' in arg):
+            if globbing and not encased_str:
+                args.extend(glob(arg))
+                log(f'globbed: {arg}')
+            else:
+                args.append(arg)
+        else:
+            args.append(arg)
+
+    return args, kwargs
+
+def format_output(result):
+    '''
+        Format the output from a run().
+
+        result = format_output({'returncode': 0, 'stdout': b'Hello ', 'stderr: None})
+        result.returncode == 0
+        True
+        result.stdout
+        'Hello'
+    '''
+
+    if (result.stdout is not None) and (not isinstance(result.stdout, str)):
+        result.stdout = result.stdout.decode()
+        result.stdout = result.stdout.strip()
+    if (result.stderr is not None) and (not isinstance(result.stderr, str)):
+        result.stderr = result.stderr.decode()
+        result.stderr = result.stderr.strip()
+
+    return result
+
+def handle_run_error(command_args, cpe):
+    '''
+        Handle an error from run().
+    '''
+
+    command_str = ' '.join(map(str, command_args))
+
+    log(f'command failed. "{command_str}", returncode: {cpe.returncode}')
+    log(f'cpe: {cpe}')
+
+    cpe.stderrout = None
+    if cpe.stderr and cpe.stdout:
+        cpe.stderrout = (cpe.stderr.decode().strip() +
+                         '/n' +
+                         cpe.stdout.decode().strip())
+    elif cpe.stderr:
+        cpe.stderrout = cpe.stderr.decode().strip()
+    elif cpe.stdout:
+        cpe.stderrout = cpe.stdout.decode().strip()
+
+    if cpe.stderrout:
+        log(f'cpe details:\n{cpe.stderrout}')
 
 def nice(*command_args, **kwargs):
     ''' Run a command line at low priority, for both cpu and io.
@@ -320,7 +384,7 @@ def nice(*command_args, **kwargs):
         Because ionice must be used immediately before the executable
         task, commands like this won't work as expected::
 
-            nice(['bash', 'tar', 'cvf', 'test.tar', '/tmp'])
+            nice(['tar', 'cvf', 'test.tar', gettempdir()])
 
         In this case only 'bash' will get the effect of ionice, not 'tar'.
     '''
@@ -330,7 +394,18 @@ def nice(*command_args, **kwargs):
     return run(*nice_args, **kwargs)
 
 def wait(program):
-    ''' Wait for a background command to finish.'''
+    ''' Wait for a background command to finish.
+
+        >>> program = background('sleep', '0.5')
+
+        >>> print('before')
+        before
+
+        >>> wait(program)
+
+        >>> print('after')
+        after
+    '''
 
     if not isinstance(program, subprocess.Popen):
         raise ValueError('program must be an instance of subprocess.Popen')
@@ -346,6 +421,40 @@ def _init_log():
         # log import delayed to avoid recursive import.
         from denova.python.log import get_log
         log = get_log()
+
+def show_stderr(*proc_args, **kwargs):
+    '''
+        How to print program's stderr
+        This also handles unicode encoded bytestreams better
+
+        Currently unused.
+    '''
+
+    class CompletedProcessStub:
+        pass
+
+    proc = subprocess.Popen(proc_args,
+                            **kwargs)
+
+    # stderr to the console's stdout
+    proc_stderr = ''
+    err_data = proc.stderr.readline()
+    while err_data:
+        line = err_data.decode()
+        proc_stderr = proc_stderr + line
+        # lines already have a newline
+        print(line, end='')
+        err_data = proc.stderr.readline()
+
+    # get any stdout from the proc
+    proc_stdout, _ = proc.communicate()
+
+    result = CompletedProcessStub()
+    result.resultcode = proc.wait()
+    result.stdout = proc_stdout
+    result.stderr = proc_stderr
+
+    # much simpler code if we don't need realtime feedback
 
 
 if __name__ == "__main__":
