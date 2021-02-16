@@ -2,8 +2,8 @@
     Extra HTTP functions.
     http_addons is named to avoid conflict with python's http pacakge.
 
-    Copyright 2013-2020 DeNova
-    Last modified: 2020-12-14
+    Copyright 2013-2021 DeNova
+    Last modified: 2021-01-03
 
     HTTP is a byte oriented protocol.
     In general, this module expects and return bytes.
@@ -454,12 +454,12 @@ def content_length(url):
     '''
 
     head = requests.head(url)
-    
+
     # handle redirs
     while head.status_code >= 300 and head.status_code < 400:
         url = head.headers['Location']
         head = requests.head(url)
-        
+
     return int(head.headers['Content-Length'])
 
 def verify_cert_locally(host, port):
@@ -491,6 +491,30 @@ def camel_case(name):
 
     assert isinstance(name, str)
     return name.replace('-', ' ').title().replace(' ', '-')
+
+def get_agent_referer(request=None, user_agent=None):
+    ''' Get the user agent and referer.
+
+        Must pass the request or user agent or both.
+    '''
+
+    # try to get the user agent from the request
+    if user_agent is None and request is not None:
+        try:
+            if 'HTTP_USER_AGENT' in request.META:
+                user_agent = request.META['HTTP_USER_AGENT']
+        except:
+            pass
+
+    if user_agent is not None:
+        if request is None:
+            referer = 'Unknown'
+        else:
+            referer = request.META.get('HTTP_REFERER', 'Unknown')
+    else:
+        referer = 'Unknown'
+
+    return user_agent, referer
 
 
 if __name__ == "__main__":

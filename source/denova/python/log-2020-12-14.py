@@ -8,15 +8,11 @@
         by hand or with the included systemd service file.
 
     Copyright 2008-2020 DeNova
-    Last modified: 2021-02-12
+    Last modified: 2020-11-30
 
     Documentation at https://denova.com/open/safelog/
 
     This file is open source, licensed under GPLv3 <http://www.gnu.org/licenses/>.
-
-    >>> from denova.python.log import Log
-    >>> log = Log()
-    >>> log('init is simple')
 
     >>> from denova.python.log import get_log
     >>> log = get_log()
@@ -55,7 +51,7 @@
             global _log
             if not _log:
                 from denova.python.log import get
-                _log = get_log()
+                _log = get()
             _log(message)
         ...
         log(message)
@@ -155,7 +151,7 @@ class _Log():
 
         >>> from denova.python.log import get_log
 
-        >>> log = get_log()
+        >>> log = get()
         >>> log('log message')
 
         Since the safelog server runs as root, don't allow logs
@@ -532,7 +528,7 @@ class _Log():
 
             >>> TESTLOG = 'test.stacktrace.log'
 
-            >>> log = denova.python.log.get_log(TESTLOG)
+            >>> log = denova.python.log.get(TESTLOG)
 
             >>> def test_func():
             ...     log('test stacktrace()')
@@ -819,7 +815,7 @@ def _test():
         >>> # if we don't specify a log filename,
         >>> # then denova.python.log uses the calling module,
         >>> # in this case '<doctest...'
-        >>> log = denova.python.log.get_log('_test.log')
+        >>> log = denova.python.log.get('_test.log')
 
         >>> log.filename
         '_test.log'
@@ -844,14 +840,12 @@ def _test():
     pass
 
 
-# clearer names for get() when imported securely
+# alternative name for get()
 # for security it's best to import only what you need
 # the code is clearer with a meaningful class or function name
 # example:
-#     from denova.python.log import get_log
+#     from denova.python.log import get_log()
 #     log = get_log()
-Log = get
-# deprecated alternative
 get_log = get
 
 

@@ -3,7 +3,7 @@
     html_addons is named to avoid conflict with python's html pacakge.
 
     Copyright 2013-2020 DeNova
-    Last modified: 2020-12-26
+    Last modified: 2021-01-02
 
     Requires BeautifulSoup, html5lib, and lxml for proper pretty printing of HTML.
 
@@ -427,12 +427,12 @@ def get_title(html):
         Test title
     '''
 
-    PATTERN = re.compile(r'''<\s*title\s*.*?>
-                                 (.*?)
-                             <\s*/title\s*>
+    PATTERN = re.compile(rb'''<\s*title\s*.*?>
+                                  (.*?)
+                              <\s*/title\s*>
                          ''',
                          re.VERBOSE | re.DOTALL | re.IGNORECASE)
-    match = PATTERN.search(html)
+    match = PATTERN.search(to_bytes(html))
     if match:
         title = match.group(1).strip()
     else:
@@ -470,6 +470,28 @@ def strip_cdata(s):
                   s,
                   flags=re.IGNORECASE)
 
+def is_html(s):
+    ''' Return True if html, else False.
+
+        Looks for <html> in an xml string.
+
+        >>> is_html('text')
+        False
+
+        >>> is_html('<a>')
+        False
+
+        >>> is_html('<html>')
+        True
+    '''
+
+    PATTERN = rb'< \s* html .*? >'
+    match = (is_xml(s) and
+             re.search(PATTERN, to_bytes(s),
+                       flags=(re.IGNORECASE | re.VERBOSE)))
+
+    return match != None
+    
 def is_xml(s):
     ''' Return True if xml, else False.
 
@@ -486,8 +508,8 @@ def is_xml(s):
         True
     '''
 
-    PATTERN = r'< \s* \w+ .*? >'
-    match = re.search(PATTERN, s,
+    PATTERN = rb'< \s* \w+ .*? >'
+    match = re.search(PATTERN, to_bytes(s),
                       flags=(re.IGNORECASE | re.VERBOSE))
 
     return match != None

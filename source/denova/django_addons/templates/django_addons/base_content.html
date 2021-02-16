@@ -1,6 +1,6 @@
 {% comment %}
-    Copyright 2012-2020 DeNova
-    Last modified: 2020-01-21
+    Copyright 2012-2021 DeNova
+    Last modified: 2021-01-28
 {% endcomment %}
 {% load i18n bootstrap4 custom %}
 
@@ -148,7 +148,9 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarFooter">
                 <ul class="navbar-nav mr-auto">
+                    {% block footer-content %}
                     {% include 'clips/footer.html' %}
+                    {% endblock footer-content %}
                 </ul>
             </div>
         </nav>

@@ -1,8 +1,8 @@
 '''
     Convert an image file to a data uri.
 
-    Copyright 2012-2020 DeNova
-    Last modified: 2020-10-20
+    Copyright 2012-2021 DeNova
+    Last modified: 2021-02-04
 
     This file is open source, licensed under GPLv3 <http://www.gnu.org/licenses/>.
 '''
@@ -122,7 +122,7 @@ def data_image(filename, browser=None, mime_type=None):
             else:
                 msg = f'missing datafile: {pathname}'
                 log.warning(msg)
-                result = f'<!-- WARNING: {msg} -->'
+                result = ''
 
         except Exception as e:
             log.error(e)

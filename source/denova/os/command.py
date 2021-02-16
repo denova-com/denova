@@ -3,14 +3,17 @@
     Run a command using python subprocess.
 
     Copyright 2018-2020 DeNova
-    Last modified: 2020-12-31
+    Last modified: 2021-02-02
 '''
 
-import os
+from glob import glob
+from os import waitpid
+from queue import Queue
 import shlex
 import subprocess
 import sys
-from glob import glob
+from threading import Thread
+from time import sleep
 
 # log init delayed to avoid circular imports
 log = None
@@ -108,6 +111,10 @@ def run(*command_args, **kwargs):
     try:
         args, kwargs = get_run_args(*command_args, **kwargs)
 
+        log(f'args: {args}')
+        if kwargs:
+            log(f'kwargs: {kwargs}')
+
         if 'output_bytes' in kwargs:
             output_bytes = kwargs['output_bytes']
             del kwargs['output_bytes']
@@ -119,8 +126,6 @@ def run(*command_args, **kwargs):
             if output not in kwargs:
                 kwargs[output] = subprocess.PIPE
 
-        log(f'args: {args}')
-        log(f'kwargs: {kwargs}')
         result = subprocess.run(args,
                                 check=True,
                                 **kwargs)
@@ -235,6 +240,7 @@ def background(*command_args, **kwargs):
 
     except OSError as ose:
         log.debug(f'command: {command_str}')
+        log.debug(f'kwargs: {kwargs_str}')
         log.exception()
 
         if ose.strerror:
@@ -259,6 +265,7 @@ def background(*command_args, **kwargs):
 
     except Exception as e:
         log.debug(f'command: {command_str}')
+        log.debug(f'kwargs: {kwargs_str}')
         log.debug(e)
         raise
 
@@ -354,8 +361,22 @@ def handle_run_error(command_args, cpe):
 
     log(f'command failed. "{command_str}", returncode: {cpe.returncode}')
     log(f'cpe: {cpe}')
+    log(cpe) # DEBUG
 
     cpe.stderrout = None
+    if cpe.stderr:
+        err = cpe.stderr.decode().strip()
+        log(f'stderr:\n{err}')
+        cpe.stderrout = err
+    if cpe.stdout:
+        out = cpe.stdout.decode().strip()
+        log(f'stdout:\n{out}')
+        if cpe.stderrout is None:
+            cpe.stderrout = out
+        else:
+            cpe.stderrout = cpe.stderrout + '\n' + out
+
+    """ delete if unused 2021-03-01
     if cpe.stderr and cpe.stdout:
         cpe.stderrout = (cpe.stderr.decode().strip() +
                          '/n' +
@@ -366,7 +387,8 @@ def handle_run_error(command_args, cpe):
         cpe.stderrout = cpe.stdout.decode().strip()
 
     if cpe.stderrout:
-        log(f'cpe details:\n{cpe.stderrout}')
+        log(f'cpe stderr and stdout:\n{cpe.stderrout}')
+    """
 
 def nice(*command_args, **kwargs):
     ''' Run a command line at low priority, for both cpu and io.
@@ -387,11 +409,22 @@ def nice(*command_args, **kwargs):
             nice(['tar', 'cvf', 'test.tar', gettempdir()])
 
         In this case only 'bash' will get the effect of ionice, not 'tar'.
+
+        #>>> shared_host = nice('this-is-sharedhost')
+        #>>> shared_host.stderr
+        #''
+        #>>> print('sharedhost' in shared_host.stdout)
+        #True
     '''
 
-    nice_args = ('nice', 'nice', 'ionice', '-c', '3') + tuple(command_args)
+    nice_args = ['nice', 'nice', 'ionice', '--class', '3']
+    args = nice_args + list(command_args)
+    return run(*args, **kwargs)
 
-    return run(*nice_args, **kwargs)
+def nice_args(*command_args):
+    ''' Modify command to run at low priority. '''
+
+    return ('nice', 'nice', 'ionice', '--class', '3') + tuple(command_args)
 
 def wait(program):
     ''' Wait for a background command to finish.
@@ -410,7 +443,7 @@ def wait(program):
     if not isinstance(program, subprocess.Popen):
         raise ValueError('program must be an instance of subprocess.Popen')
 
-    os.waitpid(program.pid, 0)
+    waitpid(program.pid, 0)
 
 def _init_log():
     ''' Initialize log. '''
@@ -453,8 +486,6 @@ def show_stderr(*proc_args, **kwargs):
     result.resultcode = proc.wait()
     result.stdout = proc_stdout
     result.stderr = proc_stderr
-
-    # much simpler code if we don't need realtime feedback
 
 
 if __name__ == "__main__":

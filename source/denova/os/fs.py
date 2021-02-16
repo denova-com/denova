@@ -3,7 +3,7 @@
     File system.
 
     Copyright 2008-2020 DeNova
-    Last modified: 2020-11-19
+    Last modified: 2021-01-14
 
     This file is open source, licensed under GPLv3 <http://www.gnu.org/licenses/>.
 '''
@@ -562,6 +562,8 @@ def get_unique_filename(dirname, prefix, suffix):
 def copy(source, dest, symlinks=True, ignore=None, owner=None, group=None, perms=None):
     ''' Copy source to dest dir.
 
+        See copy_only().
+
         copy() tries to generally follow the behavior of the
         cp command.
 
@@ -576,7 +578,7 @@ def copy(source, dest, symlinks=True, ignore=None, owner=None, group=None, perms
         dest dir. If you really want a dest named "basename/basename",
         specify it explicitly.
 
-        Otherwise, like cp, source will overwrite any existing dest.
+        Otherwise, like cp, source will overwrite any existing dest file.
 
         Unlike shutil.copytree() the default is symlinks=True. So symlinks
         are copied as symlinks. If you want the links replaced by the
@@ -685,6 +687,24 @@ def copy(source, dest, symlinks=True, ignore=None, owner=None, group=None, perms
 
     log.debug('after copy: dest={}, owner=={}, group=={}, perms=={})'. # DEBUG
         format(dest, getuid(dest), getgid(dest), oct(getmode(dest)))) # DEBUG
+
+def copy_only(source, dest):
+    ''' Copy 'source' to 'dest'.
+
+        'dest' must not exist. This greatly reduces accidental overwrites.
+
+        Attempts to preserve metadata.
+    '''
+
+    if os.path.exists(dest):
+        raise ValueError(f'destination already exists: {dest}')
+
+    if os.path.isfile(source):
+        shutil.copy2(source, dest)
+    elif os.path.isdir(source):
+        shutil.copytree(source, dest)
+    else:
+        raise ValueError(f'unrecognized file type: {source}')
 
 def merge(source, dest, symlinks=True, force=True, ignore=None, owner=None, group=None, perms=None):
     ''' Merge source to dest dir.
