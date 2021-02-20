@@ -14,9 +14,9 @@ except ModuleNotFoundError:
     import sys
     sys.exit('Django required')
 
-from denova.python.log import get_log
+from denova.python.log import Log
 
-log = get_log()
+log = Log()
 
 def get_singleton(model, db=None):
     '''

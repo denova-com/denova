@@ -14,9 +14,9 @@ except ModuleNotFoundError:
     sys.exit('Django required')
 
 from denova.net.browser import browser_types, is_primitive_browser
-from denova.python.log import get_log
+from denova.python.log import Log
 
-log = get_log()
+log = Log()
 
 
 

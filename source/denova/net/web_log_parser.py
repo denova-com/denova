@@ -13,8 +13,8 @@ from denova.python.dict import Simple
 from denova.python.utils import is_string
 
 try:
-    from denova.python.log import get_log
-    log = get_log()
+    from denova.python.log import Log
+    log = Log()
 except:   # 'bare except' because it catches more than "except Exception"
     def log(message):
         print(message)

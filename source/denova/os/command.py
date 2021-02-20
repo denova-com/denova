@@ -452,8 +452,8 @@ def _init_log():
 
     if log is None:
         # log import delayed to avoid recursive import.
-        from denova.python.log import get_log
-        log = get_log()
+        from denova.python.log import Log
+        log = Log()
 
 def show_stderr(*proc_args, **kwargs):
     '''

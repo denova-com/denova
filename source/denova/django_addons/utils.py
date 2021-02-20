@@ -21,11 +21,11 @@ try:
 except ModuleNotFoundError:
     sys.exit('Django required')
 
-from denova.python.log import get_log
+from denova.python.log import Log
 from denova.python.utils import is_string
 
 
-log = get_log()
+log = Log()
 
 def is_secure_connection(request):
     ''' Check if connection is secure.

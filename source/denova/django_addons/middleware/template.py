@@ -14,9 +14,9 @@ except ModuleNotFoundError:
     import sys
     sys.exit('Django required')
 
-from denova.python.log import get_log
+from denova.python.log import Log
 
-log = get_log()
+log = Log()
 
 def set_context(response, key, value):
     # is this necessary, or can we just e.g. "response.context_data['request'] = request"?

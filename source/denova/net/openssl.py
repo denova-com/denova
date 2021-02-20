@@ -19,9 +19,9 @@ from traceback import format_exc
 from denova.os.cli import minimal_env, Responder
 from denova.os.command import run
 from denova.os.lock import locked
-from denova.python.log import get_log
+from denova.python.log import Log
 
-log = get_log()
+log = Log()
 
 PRIVATE_KEY = 'private.key'
 PUBLIC_CERT = 'public.crt'

@@ -33,9 +33,9 @@ except ModuleNotFoundError:
     import sys
     sys.exit('Django required')
 
-from denova.python.log import get_log
+from denova.python.log import Log
 
-log = get_log()
+log = Log()
 
 
 class Redirect404Middleware(MiddlewareMixin):

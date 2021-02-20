@@ -27,7 +27,7 @@ else:
     PYTZ_AVAILABLE = True
 
 from denova.net.web_log_parser import LogLine
-from denova.python.log import get_log
+from denova.python.log import Log
 from denova.python.format import s_if_plural
 
 # map month abbrevs to numeric equivalent
@@ -70,7 +70,7 @@ far_future = datetime.max
 # indicate all dates and times
 anytime = far_future - one_microsecond
 
-log = get_log()
+log = Log()
 _compiled_timestamps = []
 
 # some constants are defined after we define functions they need

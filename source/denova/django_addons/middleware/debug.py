@@ -17,9 +17,9 @@ except ModuleNotFoundError:
     sys.exit('Django required')
 
 from denova.django_addons.utils import is_django_error_page
-from denova.python.log import get_log
+from denova.python.log import Log
 
-log = get_log()
+log = Log()
 
 
 class DebugMiddleware(MiddlewareMixin):

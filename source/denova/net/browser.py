@@ -11,9 +11,9 @@
 import re
 from traceback import format_exc
 
-from denova.python.log import get_log
+from denova.python.log import Log
 
-log = get_log()
+log = Log()
 
 def user_agent_tags(ua):
     ''' Returns list of browser types indicated by the user agent.

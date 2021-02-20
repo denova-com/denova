@@ -14,10 +14,10 @@ import pwd
 import sys
 
 from denova.os.command import run
-from denova.python.log import get_log
+from denova.python.log import Log
 
 
-log = get_log()
+log = Log()
 
 def whoami():
     ''' Get name of current user.

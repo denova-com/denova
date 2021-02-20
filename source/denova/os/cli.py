@@ -26,9 +26,9 @@
 import os
 import re
 
-from denova.python.log import get_log
+from denova.python.log import Log
 
-log = get_log()
+log = Log()
 
 class CliException(Exception):
     pass

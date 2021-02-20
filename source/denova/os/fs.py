@@ -20,10 +20,10 @@ from stat import S_ISDIR
 from subprocess import CalledProcessError
 
 from denova.os.command import run
-from denova.python.log import get_log
+from denova.python.log import Log
 from denova.python.utils import is_string
 
-log = get_log()
+log = Log()
 
 empty_dir = None
 

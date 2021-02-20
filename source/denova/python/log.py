@@ -8,7 +8,7 @@
         by hand or with the included systemd service file.
 
     Copyright 2008-2020 DeNova
-    Last modified: 2021-02-12
+    Last modified: 2021-02-18
 
     Documentation at https://denova.com/open/safelog/
 
@@ -18,8 +18,8 @@
     >>> log = Log()
     >>> log('init is simple')
 
-    >>> from denova.python.log import get_log
-    >>> log = get_log()
+    >>> from denova.python.log import Log
+    >>> log = Log()
 
     >>> log('logs are easy')
 
@@ -38,24 +38,33 @@
     >>> # log stacktrace()
     >>> log.stacktrace()
 
+'''
+
+"""
     Developer notes
 
-    This module used to allow logs anywhere. Because the safelog server
-    runs as root, for safety logs are restricted to /var/local/log
-    subdirs.
+    To do:
+      * Rename get() to Log()
+      * Add "get = Log" and doc that get is deprecated
+      * Check in Log() for log server. If none, send error message to
+        stderr and raise exception.
+
+    Because the safelog server runs as root, for safety logs are
+    restricted to /var/local/log subdirs.
 
     Python gets confused about circular imports.
     It's best for this module to delay imports of other modules that use
-    this module. An alternative is to use the sh or subprocess module here
-    instead of calling the other module. Another alternative is delayed
-    import of denova.python.log in the other module. Example::
+    this module. An alternative is to use the denova.os.command or
+    subprocess module here instead of calling the other module.
+    Another alternative is delayed import of denova.python.log in the
+    other module. Example::
 
         _log = None
         def log(msg):
             global _log
             if not _log:
                 from denova.python.log import get
-                _log = get_log()
+                _log = Log()
             _log(message)
         ...
         log(message)
@@ -96,7 +105,8 @@
             ...
 
             plog(...)
-'''
+"""
+
 import os
 import re
 import shutil
@@ -153,9 +163,9 @@ def _debug(message, force=False, filename=None, mode=None):
 class _Log():
     ''' Log file.
 
-        >>> from denova.python.log import get_log
+        >>> from denova.python.log import Log
 
-        >>> log = get_log()
+        >>> log = Log()
         >>> log('log message')
 
         Since the safelog server runs as root, don't allow logs
@@ -163,13 +173,13 @@ class _Log():
 
         >>> import os.path
         >>> path = '/tmp/testlog.log'
-        >>> log2 = get_log(path)
+        >>> log2 = Log(path)
         >>> log2('log message 2')
         >>> assert not os.path.exists(path)
 
         >>> import random
         >>> path = '/tmp/non-extent-dir-{random.randint()}/testlog.log'
-        >>> log3 = get_log(path)
+        >>> log3 = Log(path)
         >>> log('log message 3')
         >>> assert not os.path.exists(path)
     '''
@@ -201,7 +211,7 @@ class _Log():
         self.verbose = verbose
         self.audible = audible
 
-        self.pathname = get_log_path(filename=self.filename, dirname=self.dirname)
+        self.pathname = Log_path(filename=self.filename, dirname=self.dirname)
         self.debugging = False
         self.stdout_stack = []
 
@@ -211,7 +221,7 @@ class _Log():
             If verbose=True, this log message will also be printed to stdout.
             If verbose=False, this message will not printed to stdout, even if
             the log was initialized with verbose=True. Default is None, which
-            uses the verbose value passed to Log() or get_log(, if any).
+            uses the verbose value passed to Log() or Log(, if any).
 
             If audible=True, the command line 'say' program will be called
             with the message. Otherwise audible is similar to verbose. Since
@@ -284,7 +294,7 @@ class _Log():
                 print(message)
             if _USE_MASTER_LOG and not self.is_master():
                 if self.user not in _MASTER_LOGS:
-                    _MASTER_LOGS[self.user] = get_log('master.log', dirname=self.dirname)
+                    _MASTER_LOGS[self.user] = Log('master.log', dirname=self.dirname)
 
                 try:
                     logline = f'{os.path.basename(self.pathname)} {message}'
@@ -532,13 +542,13 @@ class _Log():
 
             >>> TESTLOG = 'test.stacktrace.log'
 
-            >>> log = denova.python.log.get_log(TESTLOG)
+            >>> log = denova.python.log.Log(TESTLOG)
 
             >>> def test_func():
             ...     log('test stacktrace()')
             ...     log.stacktrace()
 
-            >>> path = get_log_path(TESTLOG)
+            >>> path = Log_path(TESTLOG)
             >>> if os.path.exists(path):
             ...     os.remove(path)
 
@@ -568,7 +578,7 @@ class _Log():
         ''' Return whether this log is a master log. '''
 
         if not self.pathname:
-            self.pathname = get_log_path(filename=self.filename, dirname=self.dirname)
+            self.pathname = Log_path(filename=self.filename, dirname=self.dirname)
         return os.path.basename(self.pathname) == 'master.log'
 
     def _check_user(self):
@@ -589,7 +599,7 @@ class _Log():
                     msg = f'Log user changed from {self.user} to {current_user}.'
                     _debug(msg, force=True)
                     self.user = current_user
-                    self.pathname = get_log_path(filename=self.filename, dirname=self.dirname)
+                    self.pathname = Log_path(filename=self.filename, dirname=self.dirname)
 
     def timestamp(self):
         '''
@@ -645,7 +655,7 @@ def get(filename=None, dirname=None, group=None, recreate=False, verbose=False):
         /tmp
     '''
 
-    logpath = get_log_path(filename=filename, dirname=dirname)
+    logpath = Log_path(filename=filename, dirname=dirname)
 
     if logpath in LOGS.keys():
         log = LOGS[logpath]
@@ -659,7 +669,7 @@ def get(filename=None, dirname=None, group=None, recreate=False, verbose=False):
 
     return log
 
-def get_log_path(filename=None, dirname=None):
+def Log_path(filename=None, dirname=None):
     ''' Returns log path.
 
         The default log path is "BASE_LOG_DIR/USER/MODULE.log".
@@ -667,22 +677,22 @@ def get_log_path(filename=None, dirname=None):
         If filename is specified and does not start with a '/', it replaces "MODULE.log".
 
         >>> import os.path
-        >>> from denova.python.log import get_log
+        >>> from denova.python.log import Log
 
-        >>> path = get_log_path('testlog1.log', dirname='/tmp/logs')
+        >>> path = Log_path('testlog1.log', dirname='/tmp/logs')
         >>> assert os.path.basename(path) == 'testlog1.log'
         >>> assert os.path.dirname(path) == '/tmp/logs'
 
-        >>> path = get_log_path('/tmp/testlog2.log')
+        >>> path = Log_path('/tmp/testlog2.log')
         >>> assert os.path.basename(path) == 'testlog2.log'
         >>> assert os.path.dirname(path) == '/tmp'
 
-        >>> path = get_log_path('testlog3.log')
+        >>> path = Log_path('testlog3.log')
         >>> assert os.path.basename(path) == 'testlog3.log'
         >>> assert os.path.dirname(path) == os.path.join(BASE_LOG_DIR, denova.python._log.whoami())
 
-        >>> path = get_log_path()
-        >>> 'get_log_path' in path
+        >>> path = Log_path()
+        >>> 'Log_path' in path
         True
     '''
 
@@ -710,7 +720,7 @@ def get_log_path(filename=None, dirname=None):
         assert dirname.startswith('/')
 
     logpath = os.path.join(dirname, filename)
-    _debug(f'in denova.python.log.get_log_path() logpath: {logpath}') # DEBUG
+    _debug(f'in denova.python.log.Log_path() logpath: {logpath}') # DEBUG
 
     return logpath
 
@@ -819,7 +829,7 @@ def _test():
         >>> # if we don't specify a log filename,
         >>> # then denova.python.log uses the calling module,
         >>> # in this case '<doctest...'
-        >>> log = denova.python.log.get_log('_test.log')
+        >>> log = denova.python.log.Log('_test.log')
 
         >>> log.filename
         '_test.log'
@@ -848,11 +858,11 @@ def _test():
 # for security it's best to import only what you need
 # the code is clearer with a meaningful class or function name
 # example:
-#     from denova.python.log import get_log
-#     log = get_log()
+#     from denova.python.log import Log
+#     log = Log()
 Log = get
 # deprecated alternative
-get_log = get
+Log = get
 
 
 if __name__ == "__main__":

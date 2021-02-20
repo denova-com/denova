@@ -22,7 +22,7 @@ from functools import wraps
 from time import sleep
 from traceback import format_exc
 
-from denova.python.log import get_log
+from denova.python.log import Log
 from denova.python.times import now
 from denova.python.utils import caller_id, object_name
 
@@ -52,7 +52,7 @@ WHY_UNKNOWN = 'safelock did not say why'
 DEFAULT_TIMEOUT = timedelta.max
 
 # global variables
-log = get_log()
+log = Log()
 # WARNING: BUG. python globals are not multiprocess-safe.
 synchronized_locks = {}
 

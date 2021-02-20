@@ -22,10 +22,10 @@ from urllib.error import HTTPError, URLError
 
 from denova.os.command import run
 from denova.os.user import whoami, require_user
-from denova.python.log import get_log
+from denova.python.log import Log
 from denova.python.utils import stacktrace
 
-log = get_log()
+log = Log()
 
 class NetException(Exception):
     pass

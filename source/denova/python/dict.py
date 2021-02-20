@@ -42,10 +42,10 @@ import json
 import types
 from collections.abc import Mapping
 
-from denova.python.log import get_log
+from denova.python.log import Log
 from denova.python.utils import last_exception, is_class_instance
 
-log = get_log()
+log = Log()
 
 _unimplemented_types = set()
 datetime_types = (datetime.timedelta, datetime.date, datetime.datetime, datetime.time, datetime.timezone)

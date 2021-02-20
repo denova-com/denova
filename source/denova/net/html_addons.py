@@ -14,9 +14,9 @@ from html.parser import HTMLParser
 import re
 
 from denova.python.format import to_bytes, to_string
-from denova.python.log import get_log
+from denova.python.log import Log
 
-log = get_log()
+log = Log()
 
 class LinkParser(HTMLParser):
     ''' Generic link parser.

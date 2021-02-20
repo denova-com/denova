@@ -14,7 +14,7 @@ from subprocess import CalledProcessError
 from traceback import format_exc
 
 from denova.os.command import run
-from denova.python.log import get_log
+from denova.python.log import Log
 from denova.python.ve import venv
 
 
@@ -29,7 +29,7 @@ class BuildVenv(metaclass=ABCMeta):
     PROJECTS_DIR = os.path.realpath(os.path.join(os.path.abspath(os.path.dirname(__file__).replace('\\','/')), '..', '..'))
 
     def __init__(self):
-        self.log = get_log()
+        self.log = Log()
 
     def build(self):
 

@@ -25,10 +25,10 @@ from denova.django_addons.templatetags.lookup import lookup
 from denova.django_addons.templatetags.var import do_variables
 from denova.django_addons.utils import get_absolute_url
 from denova.net.html_addons import strip_whitespace_in_html
-from denova.python.log import get_log
+from denova.python.log import Log
 from denova.python.times import timedelta_to_human_readable
 
-log = get_log()
+log = Log()
 
 register = Library()
 

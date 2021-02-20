@@ -15,10 +15,10 @@ import builtins
 from itertools import takewhile
 from tempfile import gettempdir
 
-from denova.python.log import get_log
+from denova.python.log import Log
 
 # log in non-standard dir because of concurrency issues
-log = get_log(os.path.join(gettempdir(), 'iter.log'))
+log = Log(os.path.join(gettempdir(), 'iter.log'))
 
 def is_iterable(item):
     ''' Return True iff item is iterable.

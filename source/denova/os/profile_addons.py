@@ -17,9 +17,9 @@ import pstats
 import time
 from io import StringIO
 
-from denova.python.log import get_log
+from denova.python.log import Log
 
-log = get_log()
+log = Log()
 
 def run(command, datafile, globals=None, locals=None):
     ''' Profile python code

@@ -26,13 +26,13 @@ import requests
 from traceback import format_exc
 from urllib.parse import urlsplit, urlunsplit
 
-from denova.python.log import get_log
+from denova.python.log import Log
 from denova.python.format import to_bytes, to_string
 from denova.python.utils import gunzip
 from denova.net.openssl import verify_certificate, SELF_SIGNED_CERT_ERR_MSG, EXPIRED_CERT_ERR_MSG
 from denova.python.dict import CaseInsensitiveDict
 
-log = get_log()
+log = Log()
 
 HTTP_EOL = b'\r\n'
 HTTP_SEPARATOR = HTTP_EOL + HTTP_EOL

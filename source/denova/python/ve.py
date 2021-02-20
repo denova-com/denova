@@ -78,8 +78,8 @@ LOGGING = False
 site_packages_subdir_glob = 'lib/python*/site-packages'
 
 if LOGGING:
-    from denova.python.log import get_log
-    log = get_log()
+    from denova.python.log import Log
+    log = Log()
 
 def debug(msg):
     if DEBUGGING:

@@ -17,9 +17,9 @@ except ModuleNotFoundError:
 import json
 import re
 
-from denova.python.log import get_log
+from denova.python.log import Log
 
-log = get_log()
+log = Log()
 
 register = template.Library()
 

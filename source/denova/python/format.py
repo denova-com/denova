@@ -30,8 +30,8 @@ _log = None
 def log(message):
     global _log
     if not _log:
-        from denova.python.log import get_log
-        _log = get_log()
+        from denova.python.log import Log
+        _log = Log()
     _log(message)
 
 

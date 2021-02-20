@@ -23,14 +23,14 @@ from traceback import format_exc
 
 from denova.os.command import run
 from denova.os.user import require_user
-from denova.python.log import get_log
+from denova.python.log import Log
 from denova.python.utils import stacktrace, version
 from denova.python.times import now
 
 if version < 3:
     sys.exit('requires python 3 or later')
 
-log = get_log()
+log = Log()
 DEBUGGING = False
 
 class TimedOutException(Exception):

@@ -16,10 +16,10 @@
 import shutil
 from traceback import format_exc
 
-from denova.python.log import get_log
+from denova.python.log import Log
 from denova.python.utils import is_string
 
-log = get_log()
+log = Log()
 
 
 def read(filename):
