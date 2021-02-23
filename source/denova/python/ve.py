@@ -1,8 +1,8 @@
 '''
     Virtualenv without shell scripts.
 
-    Copyright 2011-2020 DeNova
-    Last modified: 2020-11-24
+    Copyright 2011-2021 DeNova
+    Last modified: 2021-02-22
 
     No more shell script wrappers with "cd VIRTUALENV_DIR ; bin/activate".
     Just pure python scripts using virtualenv.
@@ -51,7 +51,7 @@
             if _log == None:
                 # delayed non-global import, still takes effect globally
                 import denova.python.log
-                _log = denova.python.log.get()
+                _log = denova.python.log.Log()
             _log(message)
 
     This module is not named virtualenv because that module is part of the virtualenv

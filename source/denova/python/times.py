@@ -5,8 +5,8 @@
 
     Todo: Handle timezones better. See parse_timestamp(timezone=...),
 
-    Copyright 2009-2020 DeNova
-    Last modified: 2020-11-22
+    Copyright 2009-2021 DeNova
+    Last modified: 2021-02-22
 
     This file is open source, licensed under GPLv3 <http://www.gnu.org/licenses/>.
 '''
@@ -289,10 +289,10 @@ def parse_timestamp(timestr, startswith=False, default_year=None, timezone=None)
         'datetime.datetime(2019, 4, 11, 12, 49, tzinfo=datetime.timezone(datetime.timedelta(seconds=10800)))'
 
         >>> repr(parse_timestamp('Oct 28 09:54:48'))
-        'datetime.datetime(2020, 10, 28, 9, 54, 48)'
+        'datetime.datetime(2021, 10, 28, 9, 54, 48)'
 
         >>> repr(parse_timestamp(b'Oct 28 09:54:48'))
-        'datetime.datetime(2020, 10, 28, 9, 54, 48)'
+        'datetime.datetime(2021, 10, 28, 9, 54, 48)'
 
         >>> if PYTZ_AVAILABLE:
         ...     log.debug('test pytz')

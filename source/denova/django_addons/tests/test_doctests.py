@@ -5,11 +5,10 @@
     The tests starting with xtest aren't being
     maintained so have been disabled.
 
-    Copyright 2019-2020 DeNova
-    Last modified: 2020-0-01
+    Copyright 2019-2021 DeNova
+    Last modified: 2021-02-22
 '''
 
-import os
 import sys
 from doctest import testmod
 from unittest import main, TestCase

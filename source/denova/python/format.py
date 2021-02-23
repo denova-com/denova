@@ -626,7 +626,7 @@ def less_whitespace(s):
     ''' Remove repeated blank lines, and white space at the end of lines.
 
         >>> s = 'a    \nb\n\n\n\nc'
-        >>> print(less_whitespace(s)
+        >>> print(less_whitespace(s))
         a
         b
         c

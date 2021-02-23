@@ -7,8 +7,8 @@
       * Running safelog server. The server can be started
         by hand or with the included systemd service file.
 
-    Copyright 2008-2020 DeNova
-    Last modified: 2021-02-18
+    Copyright 2008-2021 DeNova
+    Last modified: 2021-02-22
 
     Documentation at https://denova.com/open/safelog/
 
@@ -44,10 +44,9 @@
     Developer notes
 
     To do:
-      * Rename get() to Log()
-      * Add "get = Log" and doc that get is deprecated
-      * Check in Log() for log server. If none, send error message to
-        stderr and raise exception.
+      * Check in Log() for log server. If none:
+        * Send error message to stderr and raise exception, or
+        * Write to log directly
 
     Because the safelog server runs as root, for safety logs are
     restricted to /var/local/log subdirs.
@@ -63,7 +62,7 @@
         def log(msg):
             global _log
             if not _log:
-                from denova.python.log import get
+                from denova.python.log import Log
                 _log = Log()
             _log(message)
         ...
@@ -211,7 +210,7 @@ class _Log():
         self.verbose = verbose
         self.audible = audible
 
-        self.pathname = Log_path(filename=self.filename, dirname=self.dirname)
+        self.pathname = get_log_path(filename=self.filename, dirname=self.dirname)
         self.debugging = False
         self.stdout_stack = []
 
@@ -548,7 +547,7 @@ class _Log():
             ...     log('test stacktrace()')
             ...     log.stacktrace()
 
-            >>> path = Log_path(TESTLOG)
+            >>> path = get_log_path(TESTLOG)
             >>> if os.path.exists(path):
             ...     os.remove(path)
 
@@ -578,7 +577,7 @@ class _Log():
         ''' Return whether this log is a master log. '''
 
         if not self.pathname:
-            self.pathname = Log_path(filename=self.filename, dirname=self.dirname)
+            self.pathname = get_log_path(filename=self.filename, dirname=self.dirname)
         return os.path.basename(self.pathname) == 'master.log'
 
     def _check_user(self):
@@ -599,7 +598,7 @@ class _Log():
                     msg = f'Log user changed from {self.user} to {current_user}.'
                     _debug(msg, force=True)
                     self.user = current_user
-                    self.pathname = Log_path(filename=self.filename, dirname=self.dirname)
+                    self.pathname = get_log_path(filename=self.filename, dirname=self.dirname)
 
     def timestamp(self):
         '''
@@ -620,7 +619,7 @@ class _Log():
         # do not delete the pass as it's needed when we strip all comments
         pass
 
-def get(filename=None, dirname=None, group=None, recreate=False, verbose=False):
+def Log(filename=None, dirname=None, group=None, recreate=False, verbose=False):
     ''' Return open log. Default is a log for the calling module.
 
         The default log path is "BASE_LOG_DIR/USER/MODULE.log".
@@ -634,28 +633,28 @@ def get(filename=None, dirname=None, group=None, recreate=False, verbose=False):
         log file is removed.
 
         >>> import os.path
-        >>> import denova.python.log
+        >>> from denova.python.log import Log
 
         >>> logname = 'testlog1.log'
-        >>> log = denova.python.log.get(logname)
+        >>> log = Log(logname)
         >>> log('log message')
         >>> log_path = os.path.join(BASE_LOG_DIR,
         ...                denova.python._log.whoami(),
         ...                logname)
         >>> assert log.pathname == log_path, f'{log.pathname} != {log_path}'
 
-        >>> log = get('testlog2.log', dirname='/tmp/logs')
+        >>> log = Log('testlog2.log', dirname='/tmp/logs')
         >>> log('log message')
         >>> print(log.dirname)
         /tmp/logs
 
-        >>> log = denova.python.log.get('/tmp/testlog3.log')
+        >>> log = Log('/tmp/testlog3.log')
         >>> log('log message')
         >>> print(log.dirname)
         /tmp
     '''
 
-    logpath = Log_path(filename=filename, dirname=dirname)
+    logpath = get_log_path(filename=filename, dirname=dirname)
 
     if logpath in LOGS.keys():
         log = LOGS[logpath]
@@ -669,7 +668,7 @@ def get(filename=None, dirname=None, group=None, recreate=False, verbose=False):
 
     return log
 
-def Log_path(filename=None, dirname=None):
+def get_log_path(filename=None, dirname=None):
     ''' Returns log path.
 
         The default log path is "BASE_LOG_DIR/USER/MODULE.log".
@@ -679,20 +678,20 @@ def Log_path(filename=None, dirname=None):
         >>> import os.path
         >>> from denova.python.log import Log
 
-        >>> path = Log_path('testlog1.log', dirname='/tmp/logs')
+        >>> path = get_log_path('testlog1.log', dirname='/tmp/logs')
         >>> assert os.path.basename(path) == 'testlog1.log'
         >>> assert os.path.dirname(path) == '/tmp/logs'
 
-        >>> path = Log_path('/tmp/testlog2.log')
+        >>> path = get_log_path('/tmp/testlog2.log')
         >>> assert os.path.basename(path) == 'testlog2.log'
         >>> assert os.path.dirname(path) == '/tmp'
 
-        >>> path = Log_path('testlog3.log')
+        >>> path = get_log_path('testlog3.log')
         >>> assert os.path.basename(path) == 'testlog3.log'
         >>> assert os.path.dirname(path) == os.path.join(BASE_LOG_DIR, denova.python._log.whoami())
 
-        >>> path = Log_path()
-        >>> 'Log_path' in path
+        >>> path = get_log_path()
+        >>> 'get_log_path' in path
         True
     '''
 
@@ -720,7 +719,7 @@ def Log_path(filename=None, dirname=None):
         assert dirname.startswith('/')
 
     logpath = os.path.join(dirname, filename)
-    _debug(f'in denova.python.log.Log_path() logpath: {logpath}') # DEBUG
+    _debug(f'in denova.python.log.get_log_path() logpath: {logpath}') # DEBUG
 
     return logpath
 
@@ -854,16 +853,11 @@ def _test():
     pass
 
 
-# clearer names for get() when imported securely
-# for security it's best to import only what you need
-# the code is clearer with a meaningful class or function name
-# example:
-#     from denova.python.log import Log
-#     log = Log()
-Log = get
-# deprecated alternative
-Log = get
+# get_log was deprecated in 2.6.2 in favor of Log()
+get_log = Log
 
+# ge was deprecated in 2.6.2 in favor of Log()
+get = Log
 
 if __name__ == "__main__":
     import doctest

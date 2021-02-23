@@ -3,7 +3,7 @@
     html_addons is named to avoid conflict with python's html pacakge.
 
     Copyright 2013-2020 DeNova
-    Last modified: 2021-01-02
+    Last modified: 2021-02-22
 
     Requires BeautifulSoup, html5lib, and lxml for proper pretty printing of HTML.
 
@@ -427,16 +427,94 @@ def get_title(html):
         Test title
     '''
 
-    PATTERN = re.compile(rb'''<\s*title\s*.*?>
+    class TitleParser(HTMLParser):
+        ''' Parse title from html.
+
+            After parsing, self.title is the title, or None if no title.
+        '''
+
+        def __init__(self, *args, **kwargs):
+            self.title = None
+            self.in_head = False
+            self.in_title = False
+
+            super().__init__(*args, **kwargs)
+
+        def parse(self, html):
+            if isinstance(html, bytes):
+                html = to_string(html)
+
+            self.feed(html)
+
+        def handle_starttag(self, tag, attrs):
+            if tag == 'head':
+                self.in_head = True
+            elif tag == 'title':
+                self.in_title = True
+
+        def handle_endtag(self, tag):
+            if tag == 'head':
+                self.in_head = False
+            elif tag == 'title':
+                self.in_title = False
+
+        def handle_data(self, data):
+            if self.in_head and self.in_title:
+                data = to_string(data).strip()
+                if data:
+                    self.title = data
+
+    title = None
+
+    if is_html(html):
+        parser = TitleParser()
+        parser.parse(html)
+        title = parser.title
+
+    return title
+
+def get_title_using_re(html):
+    ''' DEPRECATED. Use get_title()
+
+        Get title from html.
+
+        Return title, or None if no title found.
+
+        >>> html = """
+        ...     <html lang="en">
+        ...         <head>
+        ...              <title>
+        ...                  Test title
+        ...              </title>
+        ...
+        ...              <meta charset="utf-8">
+        ...              </meta>
+        ...         </head>
+        ...
+        ...         <body>
+        ...             just a test
+        ...         </body>
+        ...
+        ...     </html>
+        ... """
+
+        >>> print(get_title_using_re(html))
+        Test title
+    '''
+
+    PATTERN = re.compile(rb'''<\s* title .*?>
                                   (.*?)
-                              <\s*/title\s*>
+                              <\s*/\s* title \s*>
                          ''',
                          re.VERBOSE | re.DOTALL | re.IGNORECASE)
-    match = PATTERN.search(to_bytes(html))
-    if match:
-        title = match.group(1).strip()
-    else:
-        title = None
+
+
+    title = None
+
+    if is_html(html):
+        match = PATTERN.search(to_bytes(html))
+        if match:
+            title = to_string(match.group(1).strip())
 
     return title
 
@@ -471,9 +549,9 @@ def strip_cdata(s):
                   flags=re.IGNORECASE)
 
 def is_html(s):
-    ''' Return True if html, else False.
+    ''' Return True if likely html, else False.
 
-        Looks for <html> in an xml string.
+        Looks for <html>.
 
         >>> is_html('text')
         False
@@ -486,14 +564,16 @@ def is_html(s):
     '''
 
     PATTERN = rb'< \s* html .*? >'
-    match = (is_xml(s) and
-             re.search(PATTERN, to_bytes(s),
-                       flags=(re.IGNORECASE | re.VERBOSE)))
 
-    return match != None
-    
+    s_is_html = False
+    if re.search(PATTERN, to_bytes(s),
+                 flags=(re.IGNORECASE | re.VERBOSE)):
+        s_is_html = True
+
+    return s_is_html
+
 def is_xml(s):
-    ''' Return True if xml, else False.
+    ''' Return True if likely xml, else False.
 
         >>> is_xml('text')
         False
