@@ -1,8 +1,8 @@
 '''
     User utilities.
 
-    Copyright 2010-2020 DeNova
-    Last modified: 2020-11-19
+    Copyright 2010-2021 DeNova
+    Last modified: 2021-05-16
 
     This file is open source, licensed under GPLv3 <http://www.gnu.org/licenses/>.
 '''
@@ -22,12 +22,23 @@ log = Log()
 def whoami():
     ''' Get name of current user.
 
-        Calling whoami() writes to /var/log/auth.log. To avoid flooding that
-        log, try to cache the result from whoami() when you can.
+        Calling whoami() via run() writes to /var/log/auth.log.
+        To avoid flooding that log, try to cache the result from
+        whoami() when you can.
 
+        >>> assert whoami() == run('whoami').stdout
         >>> assert whoami() == pwd.getpwuid(os.geteuid()).pw_name
     '''
 
+    """
+        Two methods, each of which is noisy in a different way.
+        Calling getuid_name(os.geteuid()) adds systemd-hostnamed
+        entries in syslog.
+        Calling run('whoami').stdout adds noise to denova.os.command.log
+        and master.log.
+    """
+
+    # who = getuid_name(os.geteuid())
     who = run('whoami').stdout
     return who
 

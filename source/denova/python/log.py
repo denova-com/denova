@@ -8,7 +8,7 @@
         by hand or with the included systemd service file.
 
     Copyright 2008-2021 DeNova
-    Last modified: 2021-02-22
+    Last modified: 2021-05-16
 
     Documentation at https://denova.com/open/safelog/
 
@@ -44,6 +44,7 @@
     Developer notes
 
     To do:
+      * Queue entries in client. Send them to server in separate thread.
       * Check in Log() for log server. If none:
         * Send error message to stderr and raise exception, or
         * Write to log directly
@@ -145,6 +146,9 @@ WORLD_READWRITE_ACCESS = 0o666
 alert_from_address = None
 alert_to_address = None
 
+"""
+Do we need this? If not used by 2021-07-01, delete.
+
 # while we're here, set up python basic logging
 # it's ok to do this multiple times
 # each call to call logging.basicConfig() overrides earlier settings
@@ -154,6 +158,7 @@ basic_logging_file = NamedTemporaryFile(
     suffix='.log',
     delete=True)
 os.chmod(basic_logging_file.name, WORLD_READWRITE_ACCESS)
+"""
 
 def _debug(message, force=False, filename=None, mode=None):
     if force or _DEBUGGING:
@@ -853,10 +858,8 @@ def _test():
     pass
 
 
-# get_log was deprecated in 2.6.2 in favor of Log()
+# get_log and get were deprecated in 2.6.2 in favor of Log()
 get_log = Log
-
-# ge was deprecated in 2.6.2 in favor of Log()
 get = Log
 
 if __name__ == "__main__":

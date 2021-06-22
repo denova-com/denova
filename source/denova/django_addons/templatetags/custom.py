@@ -1,8 +1,8 @@
 '''
     Custom django template tags and filters
 
-    Copyright 2010-2020 DeNova
-    Last modified: 2020-12-13
+    Copyright 2010-2021 DeNova
+    Last modified: 2021-05-14
 
     This file is open source, licensed under GPLv3 <http://www.gnu.org/licenses/>.
 '''
@@ -313,10 +313,7 @@ def link_button(href, label,
         If your label includes template variables or filters,
         use the start_link_button/end_link_button form.
 
-        To reference the button in javascript, make the "label" all
-        lower case and replace spaces with dashes. Use the result
-        as the button's name by suffixing "-button" and its id by
-        prefixing "id-".
+        To reference the button in javascript, see button_name_id().
 
         Usage: {% link_button "My href" "My label" %}
     '''
@@ -354,10 +351,7 @@ def start_link_button(href,
         This allows you to change the visible label without changing tests
         or javascript that reference the tag id or name.
 
-        To reference the button in javascript, make the "label" all
-        lower case and replace spaces with dashes. Use the result
-        as the button's name by suffixing "-button" and its id by
-        prefixing "id-".
+        To reference the button in javascript, see button_name_id().
 
     '''
 
@@ -574,10 +568,21 @@ def form_as_narrow(form):
 
     return django.utils.html.format_html(html)
 
-def button_name_id(text):
-    ''' Return button name and id from button label. '''
+def button_name_id(label):
+    ''' Return button name and id.
 
-    base = text.replace(' ', '-').replace('.', '').replace(',', '').replace("'", '').replace("?", '').replace("<br/>", '-').replace('&nbsp;', '').lower()
+        The name and id are derived from the button label.
+
+        To reference the button in javascript:
+            1. Get the basename.
+                a. make the "label" all lower case
+                b. replace spaces with dashes.
+
+            2. name = basename + "-button"
+            3. id = "id-" + basename
+    '''
+
+    base = label.replace(' ', '-').replace('.', '').replace(',', '').replace("'", '').replace("?", '').replace("<br/>", '-').replace('&nbsp;', '').lower()
     name = f'{base}-button'
     id_tag = f'{base}-id'
 

@@ -2,8 +2,8 @@
     Extra html functions.
     html_addons is named to avoid conflict with python's html pacakge.
 
-    Copyright 2013-2020 DeNova
-    Last modified: 2021-02-22
+    Copyright 2013-2021 DeNova
+    Last modified: 2021-06-22
 
     Requires BeautifulSoup, html5lib, and lxml for proper pretty printing of HTML.
 
@@ -81,17 +81,35 @@ class LinkParser(HTMLParser):
         if data:
             self.data = data
 
+    @staticmethod
+    def html_to_links(html):
+        ''' Return links from url.
+
+            >>> html = '<a href=/first> One </a> <a href=/second> Two </a>'
+            >>> links = LinkParser.html_to_links(html)
+
+            >>> print(links)
+            [('One', '/first'), ('Two', '/second')]
+        '''
+
+        parser = LinkParser()
+        parser.parse(html)
+
+        return parser.links
+
 def extract_text(html):
     ''' Extract plain text from html.
 
         Prefers BeautifulSoup 4, but falls back to ad hoc extraction.
 
         >>> from denova.net.utils import get_page
-        >>> page = get_page('http://denova.com')
+        >>> page = get_page('https://denova.com')
         >>> page is not None
         True
         >>> text = extract_text(page)
         >>> text != page
+        True
+        >>> len(text) > 0
         True
     '''
 
@@ -189,10 +207,10 @@ def expose_hidden_tags(html):
         raise ValueError('html must be a string or bytes')
 
     if hidden_start_tag in html:
-        log.warning(f'exposing {str(hidden_start_tag)} in html')
+        #log.warning(f'exposing {str(hidden_start_tag)} in html')
         html = html.replace(hidden_start_tag, start_tag)
     if hidden_end_tag in html:
-        log.warning(f'exposing {str(hidden_end_tag)} in html')
+        #log.warning(f'exposing {str(hidden_end_tag)} in html')
         html = html.replace(hidden_end_tag, end_tag)
 
     return html

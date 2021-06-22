@@ -3,7 +3,7 @@
     http_addons is named to avoid conflict with python's http pacakge.
 
     Copyright 2013-2021 DeNova
-    Last modified: 2021-01-03
+    Last modified: 2021-04-30
 
     HTTP is a byte oriented protocol.
     In general, this module expects and return bytes.
@@ -24,7 +24,7 @@ from http.client import HTTPConnection, HTTPSConnection
 from http.client import responses as client_responses
 import requests
 from traceback import format_exc
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import urlparse, urlsplit, urlunsplit
 
 from denova.python.log import Log
 from denova.python.format import to_bytes, to_string
@@ -449,7 +449,7 @@ def content_length(url):
     ''' Return content length of url.
 
         >>> # test including redir from http: to https:
-        >>> length = content_length('http://denova.com')
+        >>> length = content_length('https://denova.com')
         >>> assert length > 0
     '''
 
@@ -485,9 +485,13 @@ def verify_cert_locally(host, port):
 
     return ok, original_cert, cert_error_details
 
-
 def camel_case(name):
-    ''' Upper case the first letter of each word in the name. '''
+    '''
+        Upper case the first letter of each word in the name.
+
+        >>> camel_case('how-to-verify-hash')
+        'How-To-Verify-Hash'
+    '''
 
     assert isinstance(name, str)
     return name.replace('-', ' ').title().replace(' ', '-')
@@ -515,6 +519,26 @@ def get_agent_referer(request=None, user_agent=None):
         referer = 'Unknown'
 
     return user_agent, referer
+
+def url_to_host(url, port=False):
+    ''' Return hostname for url.
+
+        If 'port' is True, includes any non-standard port. The default
+        is to ignore the port.
+
+        Relative urls return None.
+    '''
+
+    if not url:
+        raise ValueError('url required')
+
+    url_parts = urlparse(url)
+    if url_parts.port and url_parts.port not in (80, 443):
+        host = f'{url_parts.netloc}:{url_parts.port}'
+    else:
+        host = url_parts.netloc
+
+    return host
 
 
 if __name__ == "__main__":

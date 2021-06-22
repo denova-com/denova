@@ -1,8 +1,8 @@
 '''
     Shared django settings for between projects.
 
-    Copyright 2009-2020 DeNova
-    Last modified: 2020-12-03
+    Copyright 2009-2021 DeNova
+    Last modified: 2021-05-15
 
     This file is open source, licensed under GPLv3 <http://www.gnu.org/licenses/>.
 '''
@@ -99,8 +99,10 @@ TEMPLATE_CONTEXT_PROCESSORS = [
 ]
 
 # order recommended by django 2.0 docs
-MIDDLEWARE = (
+MIDDLEWARE = [
     #'django.middleware.cache.UpdateCacheMiddleware',    # This must be first on the list to use caching
+    # log debug info before a middleware processor short-circuits later middleware
+    'denova.django_addons.middleware.debug.DebugMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.middleware.gzip.GZipMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -114,11 +116,10 @@ MIDDLEWARE = (
 
     'denova.django_addons.middleware.template.RequestMiddleware',
     'denova.django_addons.middleware.template.SettingsMiddleware',
-    'denova.django_addons.middleware.debug.DebugMiddleware',
     #'denova.django_addons.middleware.debug.StripCodeComments',
 
     #'django.middleware.cache.FetchFromCacheMiddleware', # This must be last to use caching
-)
+]
 
 
 # Log everything to a file. Log errors, such as HTTP 500 error when DEBUG=False, to email.

@@ -5,8 +5,8 @@
     because linux command line programs are more likely to have been
     thoroughly vetted.
 
-    Copyright 2013-2020 DeNova
-    Last modified: 2020-11-19
+    Copyright 2013-2021 DeNova
+    Last modified: 2021-04-29
 
     This file is open source, licensed under GPLv3 <http://www.gnu.org/licenses/>.
 '''
@@ -21,7 +21,7 @@ import _thread
 from contextlib import contextmanager
 from traceback import format_exc
 
-from denova.os.command import run
+from denova.os.command import run, background
 from denova.os.user import require_user
 from denova.python.log import Log
 from denova.python.utils import stacktrace, version
@@ -240,6 +240,8 @@ def is_program_running(program_name):
     '''
         Return True if program is running and not defunct.
 
+        See find_active_program() for details on program_name.
+
         >>> is_program_running('python3')
         True
         >>> is_program_running('not.running')
@@ -251,6 +253,8 @@ def is_program_running(program_name):
 def get_pid(program_name):
     '''
         Return first matching pid if program is running and not defunct.
+
+        See find_active_program() for details on program_name.
 
         >>> pid = get_pid('python3')
         >>> pid is not None
@@ -269,9 +273,86 @@ def get_pid(program_name):
 
     return pid
 
+def wait_for_children():
+    ''' Wait for all children processes to finish.
+
+        >>> for secs in range(3):
+        ...     process = background('sleep', secs)
+        >>> wait_for_children()
+    '''
+
+    while wait_any_child():
+        time.sleep(0.1)
+
+def wait_any_child():
+    ''' Wait for any child process to finish.
+
+        Returns:
+            (pid, signal, exit_code)
+
+            pid: the process id
+            signal: the signal number that killed the process, or zero
+            exit_code: the process exit code
+
+        >>> pids = []
+        >>> for secs in range(3):
+        ...     process = background('sleep', secs)
+        ...     pids.append(process.pid)
+
+        >>> done = False
+        >>> while not done:
+        ...     child = wait_any_child()
+        ...     if child:
+        ...         pid, signal, exit_code = child
+        ...         assert pid != 0
+        ...         assert signal == 0
+        ...         assert exit_code == 0
+        ...     else:
+        ...         done = True
+    '''
+
+    ANY_CHILD_PID = -1 # any child of this process
+    OPTIONS = 0 # os.WEXITED | os.WSTOPPED
+
+    try:
+        result = decode_wait_result(os.waitpid(ANY_CHILD_PID, OPTIONS))
+
+    except ChildProcessError:
+        result = None
+
+    return result
+
+def decode_wait_result(result):
+    ''' Decode result from os.waitpid() etc. '''
+
+    pid, exit_status = result
+    signal = (exit_status >> 8) & 0xFF
+    exit_code = exit_status & 0xFF
+
+    return pid, signal, exit_code
+
+
+def child_pids():
+    ''' Return all child pids. '''
+
+    # verbose(f'in child_pids() os.getpid(): {os.getpid()}') # DEBUG
+    result = run('pgrep', '--parent', os.getpid())
+    candidate_pids = list(map(int, result.stdout.split()))
+    # verbose(f'in child_pids() candidate_pids: {candidate_pids}') # DEBUG
+    # remove zombies
+    pids = []
+    for pid in candidate_pids:
+        if is_pid_active(pid):
+            pids.append(pid)
+    # verbose(f'in child_pids() pids: {pids}') # DEBUG
+
+    return pids
+
 def get_path(program_name):
     '''
         Return first matching path if program is running and not defunct.
+
+        See find_active_program() for details on program_name.
 
         >>> TARGET = 'python3'
         >>> path = get_path(TARGET)
@@ -295,6 +376,11 @@ def find_active_program(program_name):
     '''
         Return the first matching raw line from "ps" if program is running.
         Ignores any program_name that is defunct.
+
+        The program name must match the running program exactly.
+        If program_name includes a directory, it must match.
+        If the directory varies, you may want to pass just the
+        basename of the program.
 
         >>> line = find_active_program('python3')
         >>> line is not None
@@ -330,6 +416,7 @@ def program_status(program_name):
     try:
         raw = run('ps', *PS_ARGS)
         raw_lines = raw.stdout.strip().split('\n')
+        log(f'raw lines:\n{raw_lines}')
 
         for line in raw_lines:
             line = str(line).strip()

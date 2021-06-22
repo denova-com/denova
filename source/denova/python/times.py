@@ -6,7 +6,7 @@
     Todo: Handle timezones better. See parse_timestamp(timezone=...),
 
     Copyright 2009-2021 DeNova
-    Last modified: 2021-02-22
+    Last modified: 2021-05-18
 
     This file is open source, licensed under GPLv3 <http://www.gnu.org/licenses/>.
 '''
@@ -267,6 +267,9 @@ def parse_timestamp(timestr, startswith=False, default_year=None, timezone=None)
 
         >>> repr(parse_timestamp('17/Oct/2019:09:35:52 +0000'))
         'datetime.datetime(2019, 10, 17, 9, 35, 52, tzinfo=datetime.timezone.utc)'
+
+        >>> repr(parse_timestamp('2021-04-20 08:31:58.773779+00:00'))
+        'datetime.datetime(2021, 4, 20, 8, 31, 58, 773779, tzinfo=datetime.timezone.utc)'
 
         We're not handling this date string because
         different parts of the world interrupt this date differently.
@@ -889,7 +892,6 @@ def timedelta_to_days(td):
         4.5
     '''
 
-    # !!!!! python 3
     return timedelta_to_seconds(td) / seconds_in_day
 
 def timedelta_to_seconds(td):
@@ -902,7 +904,6 @@ def timedelta_to_seconds(td):
     '''
 
     # internally timedelta only stores days, seconds, and microseconds
-    # !!!!! python 3
     return (
         (td.days * seconds_in_day) +
         td.seconds +
@@ -1144,7 +1145,9 @@ def date_string_to_date(date_string):
 
 
 def datetime_string_to_datetime(date_string):
-    ''' Convert a string representation of a date-time into a python datetime.
+    ''' Deprecated. Use parse_timestamp().
+
+        Convert a string representation of a date-time into a python datetime.
 
         >>> datetime_string_to_datetime('2019-11-01 11:22:47.143978+00:00')
         datetime.datetime(2019, 11, 1, 11, 22, 47, tzinfo=datetime.timezone.utc)

@@ -5,8 +5,8 @@
     The order of these CSS elements is significant.
     We want later stylesheets to override earlier ones.
 
-    Copyright 2013-2020 DeNova
-    Last modified: 2020-10-01
+    Copyright 2013-2021 DeNova
+    Last modified: 2021-05-02
 
 {% include 'static/css/black-rock.css' %}
 {% endcomment %}
@@ -14,12 +14,7 @@
 
 <link rel="icon" type="/image/x-icon" href="/favicon.ico" />
 <style type="text/css" media="screen">
-{% if debug %}
     {% include 'static/bootstrap/css/bootstrap.min.css' %}
-    {% include 'static/css/django_addons.bootstrap.css' %}
-{% else %}
-    {% include 'static/bootstrap/css/bootstrap.min.css' %}
-    {% include 'static/css/django_addons.bootstrap.css' %}
-{% endif %}
+    {% include 'static/css/django_addons.bootstrap.min.css' %}
 </style>
 

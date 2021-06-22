@@ -1,8 +1,8 @@
 '''
     Net utilities.
 
-    Copyright 2014-2020 DeNova
-    Last modified: 2020-12-01
+    Copyright 2014-2021 DeNova
+    Last modified: 2021-06-17
 
     There is some inconsistency in function naming.
 
@@ -31,7 +31,8 @@ class NetException(Exception):
     pass
 
 def hostname():
-    ''' Convenience method to get the host name.
+    ''' Return:
+            This system's host name. Convenience function.
 
         >>> from_hostname = hostname()
         >>> from_uname = run('uname', '--nodename').stdout.strip()
@@ -100,6 +101,71 @@ def hostaddress(name=None):
         raise NetException(msg)
 
     return ip
+
+def host_in_domain(host, domain):
+    ''' Returns:
+            True if host is equal to or a subdomain of domain.
+            Else returns False.
+
+        >>> host_in_domain('www.denova.com', 'denova.com')
+        True
+        >>> host_in_domain('denova.com', 'www.denova.com')
+        False
+    '''
+
+    if not host:
+        raise ValueError('host required')
+    if not domain:
+        raise ValueError('domain required')
+
+    original_host = host
+    is_match = False
+    while host and not is_match:
+        if host == domain:
+            is_match = True
+            # log(f'{original_host} is in domain {domain}')
+
+        # remove leftmost subdomain from host
+        __, __, host = host.partition('.')
+
+    return is_match
+
+def host_in_domain_list(host, domains):
+    ''' Returns:
+            True if host is equal to or a subdomain of any domain in domains.
+            Else returns False.
+
+        >>> host_in_domain_list('www.denova.com', ['denova.com', 'example.com'])
+        True
+        >>> host_in_domain_list('denova.com', ['www.denova.com', 'example.com'])
+        False
+    '''
+
+    is_match = False
+    for domain in domains:
+        if not is_match:
+            is_match = host_in_domain(host, domain)
+
+    return is_match
+
+def get_main_domain(full_domain):
+    '''
+        Get the last 2 parts of a domain.
+
+        >>> get_main_domain('www.denova.com')
+        'denova.com'
+        >>> get_main_domain('denova.com')
+        'denova.com'
+    '''
+
+    parts = full_domain.split('.')
+    total_parts = len(parts)
+    if total_parts > 2:
+        domain = f'{parts[total_parts-2]}.{parts[total_parts-1]}'
+    else:
+        domain = full_domain
+
+    return domain
 
 def interfaces():
     ''' Get net interfaces.
@@ -475,7 +541,7 @@ def get_page(full_url, proxy_dict=None):
         proxy_dict: (optional) formatted as {TYPE_OF_PROXY, PROXY_ADDRESS}
                     for example: proxy_dict={'https': 'http://127.0.0.1:8398'}
 
-        >>> page = get_page('http://denova.com')
+        >>> page = get_page('https://denova.com')
         >>> page is not None
         True
     '''

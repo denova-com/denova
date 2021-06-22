@@ -2,7 +2,7 @@
     Convert an image file to a data uri.
 
     Copyright 2012-2021 DeNova
-    Last modified: 2021-02-04
+    Last modified: 2021-05-20
 
     This file is open source, licensed under GPLv3 <http://www.gnu.org/licenses/>.
 '''
@@ -26,16 +26,22 @@ img_cache = {}
 def data_image(filename, browser=None, mime_type=None):
     ''' Encode a file in base 64 as a data uri.
 
-        The filename is relative to settings.STATIC_ROOT.
-        'browser' is defined in denova.net.browser.
+        Args:
+            filename:  The filename can be relative to settings.STATIC_ROOT
+                       or include the full path to the data file to encode.
+            browser:   As defined in denova.net.browser.
+                       Optional.
+            mime_type: The mime type used to create the data URI.
+                       Optional.
 
-        If the data uri is too large for ie8 or anything goes wrong,
-        returns the filename.
+        Returns:
+            A data URI.
+            If the data uri is too large for ie8, or the "browser" doesn't
+            support URIS, or anything goes wrong, returns the filename.
 
         >>> CURRENT_DIR = os.path.abspath(os.path.dirname(__file__))
         >>> filename = os.path.join(CURRENT_DIR, 'static', 'images', 'Kebab_icon.png')
         >>> data = data_image(filename)
-        >>> log(f'data: {data}')
         >>> data.startswith('data:image/png;base64')
         True
         >>> filename = os.path.join(CURRENT_DIR, 'static', 'images', 'Kebab_icon.png')
@@ -138,6 +144,15 @@ def data_uri(data, mime_type, charset=None):
     '''
         Convert binary data to a data uri.
 
+        Args:
+            data:      The binary data of an image.
+            mime_type: The mime type used to create the data URI.
+            charset:   The character set used to create the data URI.
+                       Optional.
+
+        Returns:
+            A data URI.
+
         >>> CURRENT_DIR = os.path.abspath(os.path.dirname(__file__))
         >>> filename = os.path.join(CURRENT_DIR, 'static', 'images', 'Kebab_icon.png')
         >>> f = open(filename, 'rb')
@@ -161,6 +176,13 @@ def file_to_data_uri(filename, mime_type):
     '''
         Convert file to a data uri.
 
+        Args:
+            filename:  The full path of an image.
+            mime_type: The mime type used to create the data URI.
+
+        Returns:
+            A data URI.
+
         >>> CURRENT_DIR = os.path.abspath(os.path.dirname(__file__))
         >>> filename = os.path.join(CURRENT_DIR, 'static', 'images', 'Kebab_icon.png')
         >>> datauri = file_to_data_uri(filename, 'image/png')
@@ -174,7 +196,11 @@ def file_to_data_uri(filename, mime_type):
     return datauri
 
 def log_if_debugging(message):
-    ''' Log if debugging. '''
+    ''' Log if debugging.
+
+        Args:
+            message:  The information to record if debugging is True.
+    '''
 
     if debugging:
         log.debug(message)

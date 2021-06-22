@@ -3,11 +3,11 @@
     Run a command using python subprocess.
 
     Copyright 2018-2020 DeNova
-    Last modified: 2021-02-02
+    Last modified: 2021-05-17
 '''
 
 from glob import glob
-from os import waitpid
+import os
 from queue import Queue
 import shlex
 import subprocess
@@ -21,21 +21,29 @@ log = None
 def run(*command_args, **kwargs):
     ''' Run a command line.
 
-        Much simpler than using python subprocess directly.
-
-        Returns subprocess.CompletedProcess, or raises
-        subprocess.CalledProcessError.
-
-        Example::
+        Much simpler than using python subprocess directly::
 
             >>> result = run('echo', 'word1', 'word2')
             >>> result.stdout
             'word1 word2'
 
-        By default run() captures stdout and stderr. It returns a
-        subprocess.CompletedProcess with stdout and stderr, plus a
-        combined stderrout as a string. Use run_verbose() if you
-        want stdout and stderr to be redirected to sys.stdout and sys.stderr.
+        Error handling is easier::
+            >>> try:
+            ...     result = run('sleep', 'not a number')
+            ... except subprocess.CalledProcessError as error:
+            ...     'invalid time interval' in error.stderrout
+            True
+
+        Returns subprocess.CompletedProcess, or raises
+        subprocess.CalledProcessError.
+
+        By default run() captures stdout and stderr. It decodes
+        .stdout and .stderr, and adds a combined .stderrout.
+        To direct stdout and stderr to sys.stdout and sys.stderr,
+        use run_verbose(). This is different from the keyword
+        verbose=.
+
+        If verbose is True, run() logs extra information.
 
         Each command line arg should be a separate run() arg so
         subprocess.check_output can escape args better.
@@ -46,14 +54,14 @@ def run(*command_args, **kwargs):
         The default is output_bytes=False. This is separate from
         universal_newlines processing, and does not affect stdin.
 
-        Unless glob=False, args are globbed.
+        Args are globbed unless glob=False.
 
-        Except for 'output_bytes' and 'glob', keyword args are passed
+        Except for 'output_bytes' and 'glob', all keyword args are passed
         to subprocess.run().
 
         On error raises subprocess.CalledProcessError.
-        The error has an extra data member called 'output' which is a
-        string containing stderr and stdout.
+        The error has an extra data member called 'stderrout' which is a
+        string combining stderr and stdout.
 
         To see the program's output when there is an error::
 
@@ -64,13 +72,11 @@ def run(*command_args, **kwargs):
                 print(cpe)
                 print(f'error output: {cpe.stderrout}')
 
-        'stderrout' combines both stderr and stdout. You can also choose
-        just 'stderr' or 'stdout'.
-
-        Because we are using PIPEs, we need to use Popen() instead of
-        run(), and call Popen.communicate() to avoid zombie processes.
-        But to get run()'s timeout, input and check params, we don't.
-        Zombie processes are worrisome, but do no real harm.
+        Because we are using PIPEs, to avoid zombie processes we would
+        need to use Popen() instead of subprocess.run(), and call
+        Popen.communicate(). But to get subprocess.run()'s timeout,
+        input and check params, we don't use Popen() for foregroud
+        tasks. Zombie processes are worrisome, but do no real harm.
 
         See https://stackoverflow.com/questions/2760652/how-to-kill-or-avoid-zombie-processes-with-subprocess-module
 
@@ -108,17 +114,28 @@ def run(*command_args, **kwargs):
     _init_log()
     result = None
 
+    command_args = list(map(str, command_args))
+
     try:
         args, kwargs = get_run_args(*command_args, **kwargs)
 
-        log(f'args: {args}')
         if kwargs:
-            log(f'kwargs: {kwargs}')
+            if 'verbose' in kwargs:
+                verbose = kwargs['verbose']
+                if verbose:
+                    log(f'args: {args}')
+                    log(f'kwargs: {kwargs}')
+                del kwargs['verbose']
+            else:
+                verbose = False
+        else:
+            verbose = False
 
         if 'output_bytes' in kwargs:
             output_bytes = kwargs['output_bytes']
             del kwargs['output_bytes']
-            log(f'output bytes: {output_bytes}')
+            if verbose:
+                log(f'output bytes: {output_bytes}')
         else:
             output_bytes = False
 
@@ -131,17 +148,26 @@ def run(*command_args, **kwargs):
                                 **kwargs)
 
     except subprocess.CalledProcessError as cpe:
-        handle_run_error(command_args, cpe)
+        log.warning(f'command got CalledProcessError: {command_args}')
+        cpe = format_output(cpe)
+        result = handle_run_error(command_args, cpe)
         raise
 
     except Exception as e:
-        log(f'command got Exception: {command_args}')
-        log(f'error NOT subprocess.CalledProcessError: {type(e)}')
+        log.warning(f'command got Exception: {command_args}')
+        log.warning(f'error NOT subprocess.CalledProcessError: {type(e)}')
         log(e)
         raise
 
     else:
+        if verbose:
+            log(f'command succeeded: {command_args}')
+        # log(f'before format_output(result), result: {result}') # DEBUG
         result = format_output(result)
+        # log(f'after format_output(result), result: {result}') # DEBUG
+
+    if verbose:
+        log(f'after run(), result: {result}') # DEBUG
 
     return result
 
@@ -195,8 +221,8 @@ def background(*command_args, **kwargs):
             try:
                 command_args = ['python', '-c', 'not python code']
                 kwargs = {'stdout': sys.stdout, 'stderr': sys.stderr}
-                program = background(*command_args, **kwargs)
-                wait(program)
+                process = background(*command_args, **kwargs)
+                wait_child(process)
             except Exception as exc:
                 print(exc)
 
@@ -211,7 +237,7 @@ def background(*command_args, **kwargs):
         >>> print('before')
         before
 
-        >>> wait(program)
+        >>> wait_child(program)
 
         >>> print('after')
         after
@@ -223,12 +249,13 @@ def background(*command_args, **kwargs):
 
     _init_log()
 
+    command_args = list(map(str, command_args))
+
     # if there is a single string arg with a space, it's a command line string
     if len(command_args) == 1 and isinstance(command_args[0], str) and ' ' in command_args[0]:
         # run() is better able to add quotes correctly when each arg is separate
         command_args = shlex.split(command_args[0])
 
-    command_str = ' '.join(command_args)
     kwargs_str = ''
     for key in kwargs:
         if kwargs_str:
@@ -239,8 +266,8 @@ def background(*command_args, **kwargs):
         process = subprocess.Popen(command_args, **kwargs)
 
     except OSError as ose:
-        log.debug(f'command: {command_str}')
-        log.debug(f'kwargs: {kwargs_str}')
+        log.debug(f'os error: command: {command_str}')
+        log.debug(f'os error: kwargs: {kwargs_str}')
         log.exception()
 
         if ose.strerror:
@@ -343,13 +370,24 @@ def format_output(result):
         'Hello'
     '''
 
-    if (result.stdout is not None) and (not isinstance(result.stdout, str)):
-        result.stdout = result.stdout.decode()
-        result.stdout = result.stdout.strip()
-    if (result.stderr is not None) and (not isinstance(result.stderr, str)):
-        result.stderr = result.stderr.decode()
-        result.stderr = result.stderr.strip()
+    result.stderrout = None
 
+    if result.stderr is not None:
+        if not isinstance(result.stderr, str):
+            result.stderr = result.stderr.decode()
+        result.stderr = result.stderr.strip()
+        result.stderrout = result.stderr
+
+    if result.stdout is not None:
+        if not isinstance(result.stdout, str):
+            result.stdout = result.stdout.decode()
+        result.stdout = result.stdout.strip()
+        if result.stderr:
+            result.stderrout = result.stderr + result.stdout
+        else:
+            result.stderrout = result.stdout
+
+    # log(f'in format_output() result.stderrout: {result.stderrout}')
     return result
 
 def handle_run_error(command_args, cpe):
@@ -357,12 +395,39 @@ def handle_run_error(command_args, cpe):
         Handle an error from run().
     '''
 
-    command_str = ' '.join(map(str, command_args))
-
+    command_str = ' '.join(list(map(str, command_args)))
     log(f'command failed. "{command_str}", returncode: {cpe.returncode}')
     log(f'cpe: {cpe}')
+    log(f'cpe stderr and stdout: {cpe.stderrout}')
     log(cpe) # DEBUG
 
+    cpe = update_stderrout(cpe)
+
+def update_stderrout(result):
+    ''' Convert stdout and stderrtostrings. Add stderrout. '''
+
+    result.stderrout = None
+
+    if result.stderr is not None:
+        if not isinstance(result.stderr, str):
+            result.stderr = result.stderr.decode()
+        result.stderr = result.stderr.strip()
+        result.stderrout = result.stderr
+
+    if result.stdout is not None:
+        if not isinstance(result.stdout, str):
+            result.stdout = result.stdout.decode()
+        result.stdout = result.stdout.strip()
+        if result.stderr:
+            result.stderrout = result.stderr + result.stdout
+        else:
+            result.stderrout = result.stdout
+
+    return result
+
+
+    """ delete if unused 2021-03-01
+    # old attempts
     cpe.stderrout = None
     if cpe.stderr:
         err = cpe.stderr.decode().strip()
@@ -376,7 +441,6 @@ def handle_run_error(command_args, cpe):
         else:
             cpe.stderrout = cpe.stderrout + '\n' + out
 
-    """ delete if unused 2021-03-01
     if cpe.stderr and cpe.stdout:
         cpe.stderrout = (cpe.stderr.decode().strip() +
                          '/n' +
@@ -390,7 +454,8 @@ def handle_run_error(command_args, cpe):
         log(f'cpe stderr and stdout:\n{cpe.stderrout}')
     """
 
-def nice(*command_args, **kwargs):
+
+def nice(*args, **kwargs):
     ''' Run a command line at low priority, for both cpu and io.
 
         This can greatly increases responsiveness of the user interface.
@@ -406,9 +471,9 @@ def nice(*command_args, **kwargs):
         Because ionice must be used immediately before the executable
         task, commands like this won't work as expected::
 
-            nice(['tar', 'cvf', 'test.tar', gettempdir()])
+            nice('bash', 'tar', 'cvf', 'test.tar', gettempdir())
 
-        In this case only 'bash' will get the effect of ionice, not 'tar'.
+        In this case only 'bash' will get the effect of nice(), not 'tar'.
 
         #>>> shared_host = nice('this-is-sharedhost')
         #>>> shared_host.stderr
@@ -417,33 +482,34 @@ def nice(*command_args, **kwargs):
         #True
     '''
 
-    nice_args = ['nice', 'nice', 'ionice', '--class', '3']
-    args = nice_args + list(command_args)
+    args = nice_args(*args)
     return run(*args, **kwargs)
 
-def nice_args(*command_args):
+def nice_args(*args):
     ''' Modify command to run at low priority. '''
 
-    return ('nice', 'nice', 'ionice', '--class', '3') + tuple(command_args)
+    nice_params = ('nice', 'nice', 'ionice', '--class', '3')
+    return nice_params + args
 
-def wait(program):
-    ''' Wait for a background command to finish.
+def wait_child(process):
+    ''' Wait for a background process to finish.
 
-        >>> program = background('sleep', '0.5')
+        >>> process = background('sleep', '0.5')
 
         >>> print('before')
         before
 
-        >>> wait(program)
+        >>> wait_child(process)
 
         >>> print('after')
         after
     '''
 
-    if not isinstance(program, subprocess.Popen):
+    if not isinstance(process, subprocess.Popen):
         raise ValueError('program must be an instance of subprocess.Popen')
 
-    waitpid(program.pid, 0)
+    # options "should be 0 for normal operation"
+    os.waitpid(process.pid, 0)
 
 def _init_log():
     ''' Initialize log. '''

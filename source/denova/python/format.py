@@ -5,8 +5,8 @@
     imports that are not from standard libs should not be
     at global scope. Put the import where it's used.
 
-    Copyright 2008-2020 DeNova
-    Last modified: 2020-12-03
+    Copyright 2008-2021 DeNova
+    Last modified: 2021-04-20
 
     This file is open source, licensed under GPLv3 <http://www.gnu.org/licenses/>.
 '''
@@ -169,7 +169,6 @@ def pretty(obj, indent=4, base_indent=0):
             p = p.replace('  ', ' ')
 
     else:
-        log(f'about to pretty print object: {obj}')
         pp = pprint.PrettyPrinter(indent=indent)
         try:
             p = pp.pformat(obj)
@@ -625,7 +624,8 @@ def read_unicode(stream, errors=None):
 def less_whitespace(s):
     ''' Remove repeated blank lines, and white space at the end of lines.
 
-        >>> s = 'a    \nb\n\n\n\nc'
+        >>> # see https://stackoverflow.com/questions/40918168/docstring-has-inconsistent-leading-whitespace
+        >>> s = 'a    \\nb\\n\\n\\n\\nc'
         >>> print(less_whitespace(s))
         a
         b
@@ -636,6 +636,74 @@ def less_whitespace(s):
     s = re.sub(r'\n+', '\n', s, flags=re.MULTILINE)
 
     return s
+
+def strip_html(html):
+    '''
+        Remove all the html and return only plain text.
+
+        >>> html = '<html>\\n<head>\\n<title>Test HTML</title>\\n</head>\\n<body>The test text</body>\\n</html>'
+        >>> strip_html(html).strip()
+        'Test HTML \\n \\n The test text'
+        >>> html = '{# Copyright 2021 DeNova #}\\n<body>Another test</body>\\n</html>'
+        >>> strip_html(html).strip()
+        'Another test'
+        >>> html = '<body>Yet another test</body>\\n{% block %}\\n something\\n {% endblock %}</html>'
+        >>> strip_html(html).strip()
+        'Yet another test \\n{% block %}\\n something'
+        >>> html = '{% comment %}\\n Copyright 2021 DeNova\\n{% endcomment %}\\n<body>Last test</body>\\n</html>'
+        >>> strip_html(html).strip()
+        'Last test'
+    '''
+    def get_start_and_end(line):
+        start_index = line.find('<')
+        if start_index == -1:
+            start_index = line.find('{#')
+            if start_index == -1:
+                start_index = line.find('{{')
+                end = '}}'
+            else:
+                end = '#}'
+        else:
+            end = '>'
+
+        return start_index, end
+
+    new_lines = []
+    skip_line = False
+
+    lines = html.split('\n')
+    for line in lines:
+        done = False
+        while not done:
+            if line.find('{% comment %}') >= 0:
+                new_lines.append(' \n')
+                skip_line = True
+                done = True
+            elif skip_line:
+                new_lines.append(' \n')
+                if line.find('{% endcomment %}') >= 0:
+                    skip_line = False
+                done = True
+            elif line.find('{% endblock') >= 0:
+                new_lines.append(' \n')
+                done = True
+            else:
+                start_index, end = get_start_and_end(line)
+                if start_index >= 0:
+                    end_index = line.find(end)
+                    if end == '#}' or end == '}}':
+                        end_index += 1
+                    if end_index > start_index:
+                        html_text = line[start_index:end_index+1]
+                        line = line.replace(html_text, ' ')
+                    else:
+                        new_lines.append(line[:start_index] + ' ')
+                        line = line[start_index + 1:]
+                else:
+                    done = True
+                    new_lines.append(line)
+
+    return '\n'.join(new_lines)
 
 def to_bytes(obj):
     ''' Convert string to bytes.
